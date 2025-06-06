@@ -19,7 +19,7 @@ message_history = []
 
 # Load message history from file if it exists
 try:
-    with open('message_history.txt', 'r', encoding="utf-8") as f:
+    with open('./data/message_history.txt', 'r', encoding="utf-8") as f:
         message_history = f.readlines()
         message_history = [msg.strip() for msg in message_history if msg.strip()]
 except FileNotFoundError:
@@ -54,7 +54,7 @@ async def on_message(message):
     response_time = discord.utils.utcnow() - reception
     print(f'Response sent in {response_time.total_seconds()} seconds')
     message_history.append(f"GePeTo: {prediction.response}")
-    with open('message_history.txt', 'w', encoding="utf-8") as f:
+    with open('./data/message_history.txt', 'w', encoding="utf-8") as f:
         for msg in message_history:
             f.write(f"{msg}\n")
         

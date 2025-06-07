@@ -11,14 +11,12 @@ def log_chat_event(event):
     Args:
         event (str): The event to log, should be a string describing the event.
     """
-    print('Logging chat event:', event)
     if os.path.exists(CHAT_EVENTS_LOG_FILE):
         all_events = load_json(CHAT_EVENTS_LOG_FILE)
     else:
         all_events = {'events': []}
         
     all_events['events'].append(event)
-    print('Current events:', all_events['events'])
     save_json(CHAT_EVENTS_LOG_FILE, all_events)
     
 def format_message_attachments(message):
@@ -51,12 +49,8 @@ class DataLoggerCog(commands.Cog):
     
     @commands.Cog.listener()
     async def on_message(self, message):
-        print('on_message triggered')
         if message.channel.id != int(os.getenv('TELEMETRY_CHANNEL_ID')):
-            return
-        
-        print('New message received in telemetry channel:', message.content)
-        
+            return        
         event = {
             'timestamp': message.created_at.isoformat(),
             'event_type': 'CREATE-MESSAGE',

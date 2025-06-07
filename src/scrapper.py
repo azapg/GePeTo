@@ -219,6 +219,17 @@ def extract_message_data(message):
     
     return data
 
+def extract_minimal_message_data(message):
+    return {
+        "id": message.id,
+        "content": message.content,
+        "author_id": message.author.id,
+        "author_name": message.author.name,
+        "author_display_name": message.author.display_name,
+        "channel_id": message.channel.id,
+        "timestamp": message.created_at.isoformat(),
+    }
+
 def log_message(message):
     """
     Main function to log a Discord message

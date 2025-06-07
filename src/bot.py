@@ -1,61 +1,44 @@
 import discord
-import dspy
+from discord.ext import commands
 import os
+import asyncio
 from dotenv import load_dotenv
-from scrapper import log_message
 
+from model import generate_response
+from scrapper import extract_minimal_message_data
+from log.message_history import add_to_message_history, get_message_history
 
 load_dotenv()
 
-# lm = dspy.LM('ollama_chat/gemma3:1b', api_base='http://localhost:11434', api_key='')
-lm = dspy.LM('openai/gpt-4o-mini-2024-07-18', api_key=os.getenv('OPENAI_API_KEY'), api_base='https://api.openai.com/v1')
-dspy.configure(lm=lm)
+async def main():
+    intents = discord.Intents.default()
+    intents.message_content = True
+    # Change to commands.Bot to support cogs
+    bot = commands.Bot(command_prefix='!', intents=intents)
+    
+    # Load your data logger cog
+    await bot.load_extension('log.data_logger')
+    
+    @bot.event
+    async def on_ready():
+        print(f'Logged in as {bot.user}!')
 
-intents = discord.Intents.default()
-intents.message_content = True
-client = discord.Client(intents=intents)
-
-message_history = []
-
-# Load message history from file if it exists
-try:
-    with open('./data/message_history.txt', 'r', encoding="utf-8") as f:
-        message_history = f.readlines()
-        message_history = [msg.strip() for msg in message_history if msg.strip()]
-except FileNotFoundError:
-    message_history = []
-
-@client.event
-async def on_ready():
-    print(f'Logged in as {client.user}!')
-
-@client.event
-async def on_message(message):
-    if message.channel.id == 1377089485325729878:
-        success = log_message(message)
-        if success:
-            print(f"Message logged: '{message.content[:50]}...'")
-        return
-    
-    if message.author == client.user or message.author.bot:
-        return
-    
-    message_history.append(f"{message.author.name}: {message.content}")
-    
-    if len(message_history) > 100:
-        message_history.pop(0)        
-    
-    reception = discord.utils.utcnow()
-    
-    predict = dspy.Predict("messages: list[str] -> response")
-    prediction = predict(messages=message_history)
-    
-    await message.reply(prediction.response)
-    response_time = discord.utils.utcnow() - reception
-    print(f'Response sent in {response_time.total_seconds()} seconds')
-    message_history.append(f"GePeTo: {prediction.response}")
-    with open('./data/message_history.txt', 'w', encoding="utf-8") as f:
-        for msg in message_history:
-            f.write(f"{msg}\n")
+    @bot.event
+    async def on_message(message):
+        if message.author == bot.user or message.author.bot or message.channel.id != int(os.getenv('TEST_CHANNEL_ID')):
+            return
         
-client.run(os.getenv('DISCORD_TOKEN'))
+        reception = discord.utils.utcnow()
+        await message.channel.typing()
+        
+        add_to_message_history(extract_minimal_message_data(message))
+        response = generate_response(get_message_history(), message)
+        
+        sent = await message.reply(response, mention_author=False)
+        print(f'Response sent in {discord.utils.utcnow() - reception} seconds')
+        
+        add_to_message_history(extract_minimal_message_data(sent))
+    
+    await bot.start(os.getenv('DISCORD_TOKEN'))
+
+asyncio.run(main())

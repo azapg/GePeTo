@@ -24,27 +24,19 @@ async def main():
 
     @bot.event
     async def on_message(message):
-        if message.channel.id != int(os.getenv('TEST_CHANNEL_ID')):
-            return
-            
-        print(message.mentions)
-        print(bot.user)
-            
         if bot.user not in message.mentions:
             return
-
-        add_to_message_history(extract_minimal_message_data(message))
-        
         if message.author == bot.user or message.author.bot:
             return
-                
+
+        messages = [message async for message in message.channel.history(limit=15)]
+        channel_history = [extract_minimal_message_data(msg) for msg in messages]
+
         reception = discord.utils.utcnow()
-        
-        print(f'Message {message.id} mentions GePeTo')
 
         async def run_agent():
             try:
-                await act(get_message_history(), message)
+                await act(channel_history, message)
                 print(f'Acted on message: {message.content}')
                 print(f'Message processed in {discord.utils.utcnow() - reception} seconds')
             except Exception as e:

@@ -1,4 +1,3 @@
-import json
 import os
 
 from .log_util import load_json, save_json
@@ -31,7 +30,7 @@ def add_to_message_history(message):
                         'author_display_name', 'channel_id', and 'timestamp'.
     """
     short_message_history['messages'].append(message)
-    if len(short_message_history['messages']) > 100:
+    if len(short_message_history['messages']) > 25:
         short_message_history['messages'].pop(0)
 
     log_message(message)
@@ -42,12 +41,9 @@ def get_message_history():
     Get the message history.
 
     Returns:
-        list: A list of messages in the message history. If message history file exists,
-        tries to fill 100 messages from it to the short_message_history.
+        list: A list of messages in the message history. If message history file exists, and
+        the short_message_history has less than 25 messages, it reads the message history file and
+        tries to fill to 25 messages from it to the short_message_history.
     """
-    if os.path.exists(MESSAGE_HISTORY_FILE):
-        all_message_history = load_json(MESSAGE_HISTORY_FILE)
-        if 'messages' in all_message_history:
-            short_message_history['messages'] = all_message_history['messages'][-100:]
     return short_message_history['messages']
     

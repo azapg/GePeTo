@@ -2,6 +2,7 @@
 import json
 import os
 from datetime import datetime
+from log.data_logger import format_message_attachments, format_message_stickers
 
 class DateTimeEncoder(json.JSONEncoder):
     """Custom JSON encoder to handle datetime objects"""
@@ -221,13 +222,15 @@ def extract_message_data(message):
 
 def extract_minimal_message_data(message):
     return {
-        "id": message.id,
-        "content": message.content,
-        "author_id": message.author.id,
-        "author_name": message.author.name,
-        "author_display_name": message.author.display_name,
-        "channel_id": message.channel.id,
-        "timestamp": message.created_at.isoformat(),
+        'timestamp': message.created_at.isoformat(),
+        'event_type': 'CREATE-MESSAGE',
+        'message_id': message.id,
+        'author_id': message.author.id,
+        'author_name': message.author.name,
+        'author_display_name': message.author.display_name,
+        'content': message.content,
+        'attachments': format_message_attachments(message),
+        'stickers': format_message_stickers(message)
     }
 
 def log_message(message):

@@ -14,7 +14,8 @@ load_dotenv()
 
 # lm = dspy.LM('ollama_chat/gemma3:1b', api_base='http://localhost:11434', api_key='')
 # lm = dspy.LM('openai/gpt-4.1-mini-2025-04-14', api_key=os.getenv('OPENAI_API_KEY'), api_base='https://api.openai.com/v1')
-lm = dspy.LM('openai/gemini-2.0-flash-lite', api_key=os.getenv('GOOGLE_API_KEY'), api_base='https://generativelanguage.googleapis.com/v1beta/openai/')
+# lm = dspy.LM('openai/gemini-2.0-flash-lite', api_key=os.getenv('GOOGLE_API_KEY'), api_base='https://generativelanguage.googleapis.com/v1beta/openai/')
+lm = dspy.LM('openai/llama3.3-70b', api_key=os.getenv('CEREBRAS_API_KEY'), api_base='https://api.cerebras.ai/v1')
 # lm = dspy.LM('openai/gemini-2.0-flash', api_key=os.getenv('GOOGLE_API_KEY'), api_base='https://generativelanguage.googleapis.com/v1beta/openai/')
 dspy.configure(lm=lm)
 

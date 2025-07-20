@@ -340,7 +340,6 @@ class ChatAction(dspy.Signature):
     done: bool = dspy.OutputField(desc="Whetever GePeTo could perform all its actions successfully.")
 
 async def act(messages, message):
-    print(f"Processing message: {message.content} from {message.author.name} in channel {message.channel.name}")
     context = ChatContext(
         events=messages, 
         chat_id=message.channel.id, 
@@ -363,5 +362,3 @@ async def act(messages, message):
     ])
     
     result = await agent.acall(context=context)
-    print(result)
-    print(f"Performing actions for message: {message.content} in channel {message.channel.name}")

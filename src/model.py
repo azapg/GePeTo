@@ -1,6 +1,6 @@
 import dspy
 import os
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import pydantic
 import mlflow
 import discord
@@ -12,13 +12,71 @@ mlflow.set_experiment("DSPy")
 
 load_dotenv()
 
-# lm = dspy.LM('ollama_chat/gemma3:1b', api_base='http://localhost:11434', api_key='')
-# lm = dspy.LM('openai/gpt-4.1-mini-2025-04-14', api_key=os.getenv('OPENAI_API_KEY'), api_base='https://api.openai.com/v1')
-# lm = dspy.LM('openai/gemini-2.0-flash-lite', api_key=os.getenv('GOOGLE_API_KEY'), api_base='https://generativelanguage.googleapis.com/v1beta/openai/')
-# lm = dspy.LM('openai/llama3.3-70b', api_key=os.getenv('CEREBRAS_API_KEY'), api_base='https://api.cerebras.ai/v1')
-# lm = dspy.LM('openai/meta-llama/Llama-3.3-70B-Instruct', api_key=os.getenv('NEBIUS_API_KEY'), api_base='https://api.studio.nebius.com/v1/')
-lm = dspy.LM('openai/moonshotai/kimi-k2-instruct', api_key=os.getenv('GROQ_API_KEY'), api_base='https://api.groq.com/openai/v1')
-dspy.configure(lm=lm, adapter=JSONAdapter())
+# ModelManager for dynamic model switching
+class ModelManager:
+    _model_map = {
+        'kimi-k2': {
+            'name': 'openai/moonshotai/kimi-k2-instruct',
+            'api_key': os.getenv('GROQ_API_KEY'),
+            'api_base': 'https://api.groq.com/openai/v1',
+        },
+        'gpt-4o': {
+            'name': 'openai/gpt-4o',
+            'api_key': os.getenv('OPENAI_API_KEY'),
+            'api_base': 'https://api.openai.com/v1',
+        },
+        'gpt-4-mini': {
+            'name': 'openai/gpt-4.1-mini-2025-04-14',
+            'api_key': os.getenv('OPENAI_API_KEY'),
+            'api_base': 'https://api.openai.com/v1',
+        },
+        'gemini': {
+            'name': 'openai/gemini-2.0-flash-lite',
+            'api_key': os.getenv('GOOGLE_API_KEY'),
+            'api_base': 'https://generativelanguage.googleapis.com/v1beta/openai/',
+        },
+        'llama3': {
+            'name': 'openai/llama3.3-70b',
+            'api_key': os.getenv('CEREBRAS_API_KEY'),
+            'api_base': 'https://api.cerebras.ai/v1',
+        },
+        'meta-llama': {
+            'name': 'openai/meta-llama/Llama-3.3-70B-Instruct',
+            'api_key': os.getenv('NEBIUS_API_KEY'),
+            'api_base': 'https://api.studio.nebius.com/v1/',
+        },
+        'gemma': {
+            'name': 'ollama_chat/gemma3:1b',
+            'api_key': '',
+            'api_base': 'http://localhost:11434',
+        },
+    }
+    _current_model: str = 'kimi-k2'
+    _adapter = JSONAdapter()
+
+    @classmethod
+    def get_model_names(cls):
+        return list(cls._model_map.keys())
+
+    @classmethod
+    def get_current_model_name(cls):
+        return cls._current_model
+
+    @classmethod
+    def set_model(cls, model_name: str) -> bool:
+        if model_name not in cls._model_map:
+            return False
+        cls._current_model = model_name
+        return True
+
+    @classmethod
+    def get_lm(cls):
+        cfg = cls._model_map[cls._current_model]
+        return dspy.LM(cfg['name'], api_key=cfg['api_key'], api_base=cfg['api_base'])
+
+    @classmethod
+    def get_adapter(cls):
+        return cls._adapter
 
 async def _get_channel(channel_id):
     """
@@ -361,5 +419,13 @@ async def act(messages, message):
         search_wikipedia,
         lookup_wikipedia,
     ])
-    
-    result = await agent.acall(context=context)
+    # Use the current model context
+    lm = ModelManager.get_lm()
+    adapter = ModelManager.get_adapter()
+    with dspy.context(lm=lm, adapter=adapter):
+        result = await agent.acall(context=context)
+
+# Export ModelManager and get_current_model_name for bot.py
+get_current_model_name = ModelManager.get_current_model_name
+set_model = ModelManager.set_model
+get_model_names = ModelManager.get_model_names

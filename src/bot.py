@@ -4,7 +4,7 @@ import os
 import asyncio
 from dotenv import load_dotenv
 
-from model import act
+from model import act, set_model, get_current_model_name, get_model_names
 from scrapper import extract_minimal_message_data
 from log.message_history import add_to_message_history, get_message_history
 from bot_instance import set_bot
@@ -24,6 +24,28 @@ async def main():
 
     @bot.event
     async def on_message(message):
+        if message.content.strip().startswith('!model'):
+            admin_id = os.getenv('ADMIN_ID')
+            if str(message.author.id) != str(admin_id):
+                return
+            args = message.content.strip().split()
+            if len(args) == 1 or (len(args) == 2 and args[1].lower() == 'list'):
+                models = get_model_names()
+                await message.channel.send(f"Available models: {', '.join(models)}")
+                return
+            if len(args) == 2 and args[1].lower() == 'current':
+                await message.channel.send(f"Current model: {get_current_model_name()}")
+                return
+            if len(args) == 2:
+                model_name = args[1]
+                if set_model(model_name):
+                    await message.channel.send(f"Model switched to: {model_name}")
+                else:
+                    await message.channel.send(f"Unknown model: {model_name}. Use !model list to see available models.")
+                return
+            await message.channel.send("Usage: !model <model_name> | !model list | !model current")
+            return
+
         if bot.user not in message.mentions:
             return
         if message.author == bot.user or message.author.bot:

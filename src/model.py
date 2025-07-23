@@ -15,9 +15,14 @@ load_dotenv()
 # ModelManager for dynamic model switching
 class ModelManager:
     _model_map = {
-        'kimi-k2': {
+        'kimi-k2-free': {
             'name': 'openai/moonshotai/kimi-k2-instruct',
-            'api_key': os.getenv('GROQ_API_KEY'),
+            'api_key': os.getenv('GROQ_API_KEY_FREE'),
+            'api_base': 'https://api.groq.com/openai/v1',
+        },
+        'kimi-k2-paid': {
+            'name': 'openai/moonshotai/kimi-k2-instruct',
+            'api_key': os.getenv('GROQ_API_KEY_PAID'),
             'api_base': 'https://api.groq.com/openai/v1',
         },
         'gpt-4o': {
@@ -51,7 +56,7 @@ class ModelManager:
             'api_base': 'http://localhost:11434',
         },
     }
-    _current_model: str = 'kimi-k2'
+    _current_model: str = 'kimi-k2-paid'
     _adapter = JSONAdapter()
 
     @classmethod
@@ -393,6 +398,17 @@ class ChatAction(dspy.Signature):
     In discord you mention users by their ID, so you can use <@USER_ID> to mention a user.
     You can also use emojis by their ID, like <:emoji_name:emoji_id>.
     Don't mention people randomly because it can be annoying, only mention them when you are replying to their message or when you need their attention.
+    
+    Large messages often spam the chat, use short answers, single sentences if possible. Do not overuse emojis if others don't use them. Only use emojis if they are really necessary or the situation asks for it
+    That's part of mimicking the enviorment behaviour.
+    
+    If the chat is in spanish, reply in spanish.
+    Always consider to use all of your tools, not just send and reply. Try to react to messages, edit and delete yours to make jokes.
+    You can also use markdown format for titles, bold, italics, and "-#" before a sentence for small text.
+    
+    When users are tagging you too much, enter in a relax state. State that you can't be replying to so many messages and suggest going to private chats instead. That would keep the chat more managable in high use hours.
+    
+    Remember: DO NOT SPAM THE CHAT, KEEP IT FUN BUT YOU DON'T WANT TO HAVE HUNDREDS OF MESSAGES SPAMMING.
     """
     
     context: ChatContext = dspy.InputField(desc="The context of the chat, including messages and chat information.")

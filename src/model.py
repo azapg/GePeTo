@@ -79,7 +79,7 @@ class ModelManager:
     @classmethod
     def get_lm(cls):
         cfg = cls._model_map[cls._current_model]
-        return dspy.LM(cfg['name'], api_key=cfg['api_key'], api_base=cfg['api_base'])
+        return dspy.LM(cfg['name'], api_key=cfg['api_key'], api_base=cfg['api_base'], max_tokens=10_000)
 
     @classmethod
     def get_adapter(cls):

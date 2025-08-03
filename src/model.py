@@ -356,7 +356,6 @@ async def get_image_context(url, question: Optional[str] = None):
     with dspy.context(lm=ModelManager.get_lm('gemini'), adapter=ModelManager.get_adapter()):
         describe = dspy.Predict(ImageContextExtractorSignature)
         result = await describe(image=dspy.Image.from_url(url, download=True), question=question)
-        print('LA PUTA QUE TE RE MIL PARIÓ')
         return result.context
 
 # class Attachment(pydantic.BaseModel):

@@ -4,7 +4,6 @@ from typing import List, Dict, Any, Optional
 import pydantic
 import mlflow
 import discord
-from dill.logger import adapter
 from dotenv import load_dotenv
 from bot_instance import get_bot
 from dspy.adapters import JSONAdapter

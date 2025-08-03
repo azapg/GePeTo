@@ -99,7 +99,7 @@ class ModelManager:
         preset = provider_presets[provider]
         api_key = os.getenv(preset['api_key_env'], '')
         api_base = preset['api_base']
-        if not api_key:
+        if not api_key and provider != 'ollama':
             raise ValueError(f"API key for provider '{provider}' not found in environment variable '{preset['api_key_env']}'")
         cls._model_map[model_name] = {
             'name': name,

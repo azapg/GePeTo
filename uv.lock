@@ -502,7 +502,7 @@ wheels = [
 
 [[package]]
 name = "dspy"
-version = "2.6.27"
+version = "3.0.0b3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -519,7 +519,6 @@ dependencies = [
     { name = "numpy" },
     { name = "openai" },
     { name = "optuna" },
-    { name = "pandas" },
     { name = "pydantic" },
     { name = "regex" },
     { name = "requests" },
@@ -528,9 +527,9 @@ dependencies = [
     { name = "tqdm" },
     { name = "ujson" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/38/8a/f7ff1a6d3b5294678f13d17ecfc596f49a59e494b190e4e30f7dea7df1dc/dspy-2.6.27.tar.gz", hash = "sha256:de1c4f6f6d127e0efed894e1915dac40f5d5623e7f1cf3d749c98d790066477a", size = 234604, upload-time = "2025-06-03T17:47:13.411Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/4e/2a/0044c402b0b1b674b18861e300215366b3d76e5a275d640773c59f545364/dspy-3.0.0b3.tar.gz", hash = "sha256:e7bbab72b3145ff4601b1712bd7915fc7dc13c28c8d9dd8af71e0fc460213694", size = 202176, upload-time = "2025-07-19T16:54:51.016Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/5a/bb/8a75d44bc1b54dea0fa0428eb52b13e7ee533b85841d2c53a53dfc360646/dspy-2.6.27-py3-none-any.whl", hash = "sha256:54e55fd6999b6a46e09b0e49e8c4b71be7dd56a881e66f7a60b8d657650c1a74", size = 297296, upload-time = "2025-06-03T17:47:11.526Z" },
+    { url = "https://files.pythonhosted.org/packages/16/07/3266b02bdc5d17a841c21f421ac965cc146c0935a494bf753aa1e4bd86f4/dspy-3.0.0b3-py3-none-any.whl", hash = "sha256:41089f5d86f9544a5b1fc59bf5ac7fb8b5b6e95e145e7181845812dd6d40c8ba", size = 245456, upload-time = "2025-07-19T16:54:49.792Z" },
 ]
 
 [[package]]
@@ -548,7 +547,7 @@ dependencies = [
 requires-dist = [
     { name = "discord", specifier = ">=2.3.2" },
     { name = "dotenv", specifier = ">=0.9.9" },
-    { name = "dspy", specifier = ">=2.6.27" },
+    { name = "dspy", specifier = ">=3.0.0b3" },
     { name = "mlflow", specifier = ">=2.22.1" },
 ]
 

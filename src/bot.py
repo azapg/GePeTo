@@ -53,7 +53,7 @@ async def main():
 
         messages = [message async for message in message.channel.history(limit=15)]
         channel_history = [extract_minimal_message_data(msg) for msg in messages]
-
+        channel_history.reverse()
         reception = discord.utils.utcnow()
 
         async def run_agent():

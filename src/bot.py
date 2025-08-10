@@ -10,6 +10,9 @@ from bot_instance import set_bot
 
 load_dotenv()
 
+from util.verbosity import LOG_VERBOSITY
+from util.log import _format_message_context, _snapshot_text
+
 async def main():
     intents = discord.Intents.default()
     intents.message_content = True
@@ -57,11 +60,17 @@ async def main():
 
         async def run_agent():
             try:
+                if LOG_VERBOSITY >= 2:
+                    print(f'Acting on message {_format_message_context(message, LOG_VERBOSITY)}')
                 await act(channel_history, message)
-                print(f'Acted on message: {message.content}')
-                print(f'Message processed in {discord.utils.utcnow() - reception} seconds')
+                duration_ms = int((discord.utils.utcnow() - reception).total_seconds() * 1000)
+                if LOG_VERBOSITY >= 1:
+                    print(f'Acted on message {_format_message_context(message, LOG_VERBOSITY)} in {duration_ms} ms')
             except Exception as e:
-                print(f'Error in agent: {e}')
+                if LOG_VERBOSITY >= 1:
+                    print(f'Error in agent while handling {_format_message_context(message, LOG_VERBOSITY)}: {e}')
+                else:
+                    print(f'Error in agent: {e}')
                 import traceback
                 traceback.print_exc()
         

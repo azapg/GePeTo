@@ -14,6 +14,8 @@ mlflow.set_experiment("DSPy")
 
 load_dotenv()
 
+ENABLE_DATA_LOG = os.getenv('DATA_LOG_MESSAGES', 'false').strip().lower() in ('1', 'true', 'yes', 'y', 'on')
+
 # ModelManager for dynamic model switching
 class ModelManager:
     _current_model: str = 'kimi-k2-paid'
@@ -357,46 +359,6 @@ async def get_image_context(url, question: Optional[str] = None):
         describe = dspy.Predict(ImageContextExtractorSignature)
         result = describe(image=dspy.Image.from_url(url, download=True), question=question)
         return result.context
-
-# class Attachment(pydantic.BaseModel):
-#     """Model representing an attachment in a chat event."""
-#     url: str
-#     filename: str
-#     size: int
-#     content_type: str
-#     description: Optional[str] = None
-#     height: Optional[int] = None
-#     width: Optional[int] = None
-
-# class Sticker(pydantic.BaseModel):
-#     """Model representing a sticker in a chat event."""
-#     id: int
-#     name: str
-#     format: List[Union[str, int]] # Format can be a string (e.g., "png") or an int (e.g., 1)
-#     url: str
-
-# class ChatEvent(pydantic.BaseModel):
-#     """Model representing a chat event (message, edit, delete, etc.)."""
-#     timestamp: str
-#     event_type: str = pydantic.Field(..., pattern="^(CREATE-MESSAGE|EDIT-MESSAGE|DELETE-MESSAGE)$")
-#     message_id: int
-#     author_id: int
-#     author_name: str
-#     author_display_name: str
-#     channel_id: Optional[int] = None # Assuming channel_id might not always be present or relevant for all event types
-
-#     # Fields specific to CREATE-MESSAGE and DELETE-MESSAGE
-#     content: Optional[str] = None
-#     attachments: Optional[List[Attachment]] = None
-#     stickers: Optional[List[Sticker]] = None
-
-#     # Fields specific to EDIT-MESSAGE
-#     content_before: Optional[str] = None
-#     content_after: Optional[str] = None
-#     attachments_before: Optional[List[Attachment]] = None
-#     attachments_after: Optional[List[Attachment]] = None
-#     stickers_before: Optional[List[Sticker]] = None
-#     stickers_after: Optional[List[Sticker]] = None
     
 class ChatEvent(pydantic.BaseModel):
     """
@@ -538,15 +500,16 @@ async def act(messages, message):
     
     # Collect interaction data
     try:
-        collect_interaction_data(
-            chat_context_data=chat_context_data,
-            prediction_result=result,
-            execution_time_ms=execution_time_ms,
-            success=success,
-            error_message=error_message,
-            model_name=current_model,
-            model_config=model_config
-        )
+        if ENABLE_DATA_LOG:
+            collect_interaction_data(
+                chat_context_data=chat_context_data,
+                prediction_result=result,
+                execution_time_ms=execution_time_ms,
+                success=success,
+                error_message=error_message,
+                model_name=current_model,
+                model_config=model_config
+            )
     except Exception as e:
         print(f"Warning: Failed to collect interaction data: {e}")
     

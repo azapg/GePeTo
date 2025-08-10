@@ -18,7 +18,12 @@ async def main():
     intents = discord.Intents.default()
     intents.message_content = True
     bot = commands.Bot(command_prefix='!', intents=intents)
-    await bot.load_extension('log.data_logger')
+    
+    enable_data_log = os.getenv('DATA_LOG_MESSAGES', 'false').strip().lower() in ('1', 'true', 'yes', 'y', 'on')
+    if enable_data_log:
+        await bot.load_extension('log.data_logger')
+    elif LOG_VERBOSITY >= 2:
+        print('Data logger disabled (DATA_LOG_MESSAGES=false)')
     
     @bot.event
     async def on_ready():

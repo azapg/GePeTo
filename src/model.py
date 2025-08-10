@@ -57,36 +57,6 @@ async def reply_to_message(message_id, channel_id, content, mention=False):
     await message.reply(content, mention_author=mention,)
     return "Successfully replied to message {message_id} in channel {channel_id}."
         
-DOCS = {}
-
-def search(query: str, k: int) -> list[str]:
-    results = dspy.ColBERTv2(url='http://20.102.90.50:2017/wiki17_abstracts')(query, k=k)
-    results = [x['text'] for x in results]
-
-    for result in results:
-        title, text = result.split(" | ", 1)
-        DOCS[title] = text
-
-    return results
-
-def search_wikipedia(query: str) -> list[str]:
-    """Returns top-5 results and then the titles of the top-5 to top-30 results."""
-
-    topK = search(query, 30)
-    titles, topK = [f"`{x.split(' | ')[0]}`" for x in topK[5:30]], topK[:5]
-    return topK + [f"Other retrieved pages have titles: {', '.join(titles)}."]
-
-def lookup_wikipedia(title: str) -> str:
-    """Returns the text of the Wikipedia page, if it exists."""
-
-    if title in DOCS:
-        return DOCS[title]
-
-    results = [x for x in search(title, 10) if x.startswith(title + " | ")]
-    if not results:
-        return f"No Wikipedia page found for title: {title}"
-    return results[0]
-
 async def send_message(channel_id: int, content: str) -> bool:
     """Send a message to a specific channel."""
     channel = await _get_channel(channel_id)
@@ -282,9 +252,6 @@ async def act(messages, message):
         react_to_message,
         get_image_context,
         mark_as_typing,
-        search,
-        search_wikipedia,
-        lookup_wikipedia,
     ])
     
     # Use the current model context

@@ -16,6 +16,8 @@ load_dotenv()
 
 # ModelManager for dynamic model switching
 class ModelManager:
+    _current_model: str = 'kimi-k2-paid'
+    _adapter = JSONAdapter()
     _model_map = {
         'kimi-k2-free': {
             'name': 'openai/moonshotai/kimi-k2-instruct',
@@ -58,8 +60,52 @@ class ModelManager:
             'api_base': 'http://localhost:11434',
         },
     }
-    _current_model: str = 'kimi-k2-paid'
-    _adapter = JSONAdapter()
+
+    @classmethod
+    def add_model(cls, model_name: str, name: str, provider: str = None):
+        """
+        Dynamically add a new model to the model map.
+        Only allows known providers. Uses os.getenv to fetch the API key for the provider.
+        """
+        provider_presets = {
+            'openai': {
+                'api_base': 'https://api.openai.com/v1',
+                'api_key_env': 'OPENAI_API_KEY',
+            },
+            'groq': {
+                'api_base': 'https://api.groq.com/openai/v1',
+                'api_key_env': 'GROQ_API_KEY_PAID',
+            },
+            'cerebras': {
+                'api_base': 'https://api.cerebras.ai/v1',
+                'api_key_env': 'CEREBRAS_API_KEY',
+            },
+            'nebius': {
+                'api_base': 'https://api.studio.nebius.com/v1/',
+                'api_key_env': 'NEBIUS_API_KEY',
+            },
+            'gemini': {
+                'api_base': 'https://generativelanguage.googleapis.com/v1beta/openai/',
+                'api_key_env': 'GOOGLE_API_KEY',
+            },
+            'ollama': {
+                'api_base': 'http://localhost:11434',
+                'api_key_env': '', 
+            },
+        }
+        if not provider or provider not in provider_presets:
+            raise ValueError(f"Unknown or missing provider: {provider}. Allowed: {list(provider_presets.keys())}")
+        preset = provider_presets[provider]
+        api_key = os.getenv(preset['api_key_env'], '')
+        api_base = preset['api_base']
+        if not api_key and provider != 'ollama':
+            raise ValueError(f"API key for provider '{provider}' not found in environment variable '{preset['api_key_env']}'")
+        cls._model_map[model_name] = {
+            'name': name,
+            'api_key': api_key,
+            'api_base': api_base,
+        }
+        return True
 
     @classmethod
     def get_model_names(cls):
@@ -77,8 +123,12 @@ class ModelManager:
         return True
 
     @classmethod
-    def get_lm(cls):
-        cfg = cls._model_map[cls._current_model]
+    def has_model(cls, model_name: str) -> bool:
+        return model_name in cls._model_map
+
+    @classmethod
+    def get_lm(cls, model_name: Optional[str] = None):
+        cfg = cls._model_map[cls._current_model if model_name is None else model_name]
         return dspy.LM(cfg['name'], api_key=cfg['api_key'], api_base=cfg['api_base'], max_tokens=10_000)
 
     @classmethod
@@ -285,20 +335,28 @@ async def react_to_message(message_id, channel_id, emoji_id):
     emoji = await message.guild.fetch_emoji(emoji_id);
     await message.add_reaction(emoji) 
     return "Successfully reacted to message {message_id} in channel {channel_id} with emoji {emoji_id}."
-    
-async def get_image_context(url):
+
+class ImageContextExtractorSignature(dspy.Signature):
+    """Get information about an image"""
+    image: dspy.Image = dspy.InputField()
+    question: Optional[str] = dspy.InputField(desc="Optional question to extract specific information about an image.")
+    context: str = dspy.OutputField()
+
+async def get_image_context(url, question: Optional[str] = None):
     """
     Get the context of an image from a URL.
-    
+
     Args:
         url (str): The URL of the image.
-        
+        question: An optional question to extract specific information about an image.
+
     Returns:
         str: The context of the image.
     """
-    describe = dspy.Predict("image -> description")
-    result = describe(image=dspy.Image.from_url(url))
-    return result.description
+    with dspy.context(lm=ModelManager.get_lm('gemini'), adapter=ModelManager.get_adapter()):
+        describe = dspy.Predict(ImageContextExtractorSignature)
+        result = describe(image=dspy.Image.from_url(url, download=True), question=question)
+        return result.context
 
 # class Attachment(pydantic.BaseModel):
 #     """Model representing an attachment in a chat event."""

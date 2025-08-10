@@ -5,6 +5,7 @@ import asyncio
 from dotenv import load_dotenv
 
 from model import act, set_model, get_current_model_name, get_model_names
+from model import ModelManager  # Import ModelManager for dynamic add
 from scrapper import extract_minimal_message_data
 from bot_instance import set_bot
 
@@ -38,6 +39,22 @@ async def main():
             if len(args) == 2 and args[1].lower() == 'current':
                 await message.channel.send(f"Current model: {get_current_model_name()}")
                 return
+            if len(args) >= 2 and args[1].lower() == 'new':
+                if len(args) < 6 or args[4] != '--provider':
+                    await message.channel.send("Usage: !model new <model_name> <name> --provider <provider>")
+                    return
+                model_name = args[2]
+                name = args[3]
+                provider = args[5]
+                if ModelManager.has_model(model_name):
+                    await message.channel.send(f"Model '{model_name}' already exists. Use a different name.")
+                    return
+                try:
+                    ModelManager.add_model(model_name, name, provider=provider)
+                    await message.channel.send(f"Model '{model_name}' added dynamically with provider '{provider}'.")
+                except Exception as e:
+                    await message.channel.send(f"Failed to add model: {e}")
+                return
             if len(args) == 2:
                 model_name = args[1]
                 if set_model(model_name):
@@ -45,7 +62,7 @@ async def main():
                 else:
                     await message.channel.send(f"Unknown model: {model_name}. Use !model list to see available models.")
                 return
-            await message.channel.send("Usage: !model <model_name> | !model list | !model current")
+            await message.channel.send("Usage: !model <model_name> | !model list | !model current | !model new <model_name> <name> --provider <provider>")
             return
 
         if bot.user not in message.mentions:

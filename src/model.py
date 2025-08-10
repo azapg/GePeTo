@@ -1,12 +1,11 @@
 import dspy
 import os
-from typing import List, Dict, Any, Optional
+from typing import List, Any, Optional
 import pydantic
 import mlflow
 import discord
 from dotenv import load_dotenv
 from bot_instance import get_bot
-from dspy.adapters import JSONAdapter
 import time
 from data_collector import collect_interaction_data
 from model_manager import ModelManager

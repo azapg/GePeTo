@@ -547,7 +547,7 @@ dependencies = [
 requires-dist = [
     { name = "discord", specifier = ">=2.3.2" },
     { name = "dotenv", specifier = ">=0.9.9" },
-    { name = "dspy", specifier = ">=3.0.0b3" },
+    { name = "dspy", specifier = ">=2.6.27" },
     { name = "mlflow", specifier = ">=2.22.1" },
 ]
 

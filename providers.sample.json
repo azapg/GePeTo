@@ -1,0 +1,18 @@
+{
+  "groq": {
+    "api_base": "https://api.groq.com/openai/v1",
+    "api_key_env": "GROQ_API_KEY"
+  },
+  "cerebras": {
+    "api_base": "https://api.cerebras.ai/v1",
+    "api_key_env": "CEREBRAS_API_KEY"
+  },
+  "openai": {
+    "api_base": "https://api.openai.com/v1",
+    "api_key_env": "OPENAI_API_KEY"
+  },
+  "ollama": {
+    "api_base": "http://localhost:11434",
+    "api_key_env": ""
+  }
+}

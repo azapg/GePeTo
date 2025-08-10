@@ -1,0 +1,26 @@
+{
+  "default": "kimi-fast",
+  "models": [
+    {
+      "label": "kimi-fast",
+      "name": "openai/moonshotai/kimi-k2-instruct",
+      "provider": "groq"
+    },
+    {
+      "label": "llama-fast",
+      "name": "openai/llama3.3-70b",
+      "provider": "cerebras"
+    },
+    {
+      "label": "local-model",
+      "name": "ollama_chat/llama3.1:8b",
+      "provider": "ollama"
+    },
+    {
+      "label": "custom-model",
+      "name": "openai/gpt-4o",
+      "api_base": "https://api.openai.com/v1",
+      "api_key_env": "OPENAI_API_KEY"
+    }
+  ]
+}

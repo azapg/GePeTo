@@ -13,3 +13,7 @@ wheels/
 
 data/
 mlruns/
+
+# Configuration files
+models.json
+providers.json

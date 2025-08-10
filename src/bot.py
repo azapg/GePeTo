@@ -6,7 +6,6 @@ from dotenv import load_dotenv
 
 from model import act, set_model, get_current_model_name, get_model_names
 from scrapper import extract_minimal_message_data
-from log.message_history import add_to_message_history, get_message_history
 from bot_instance import set_bot
 
 load_dotenv()

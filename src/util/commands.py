@@ -1,6 +1,6 @@
 import os 
 import discord
-from model import *
+from model_manager import ModelManager
 
 async def process_commands(message: discord.Message) -> bool:
     content = message.content.strip()
@@ -13,12 +13,12 @@ async def process_commands(message: discord.Message) -> bool:
 
     args = content.split()
     if len(args) == 1 or (len(args) == 2 and args[1].lower() == 'list'):
-        models = get_model_names()
+        models = ModelManager.get_model_names()
         await message.channel.send(f"Available models: {', '.join(models)}")
         return True
 
     if len(args) == 2 and args[1].lower() == 'current':
-        await message.channel.send(f"Current model: {get_current_model_name()}")
+        await message.channel.send(f"Current model: {ModelManager.get_current_model_name()}")
         return True
 
     if len(args) >= 2 and args[1].lower() == 'new':
@@ -40,7 +40,7 @@ async def process_commands(message: discord.Message) -> bool:
 
     if len(args) == 2:
         model_name = args[1]
-        if set_model(model_name):
+        if ModelManager.set_model(model_name):
             await message.channel.send(f"Model switched to: {model_name}")
         else:
             await message.channel.send(f"Unknown model: {model_name}. Use !model list to see available models.")

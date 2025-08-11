@@ -12,7 +12,7 @@ from model_manager import ModelManager
 from tools.tools_manager import TOOLS
 
 mlflow.dspy.autolog()
-mlflow.set_experiment("DSPy")
+mlflow.set_experiment("GePeTo")
 
 load_dotenv()
 

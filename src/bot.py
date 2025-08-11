@@ -4,7 +4,7 @@ import os
 import asyncio
 from dotenv import load_dotenv
 
-from model import act
+from agent import act
 from scrapper import extract_minimal_message_data
 from bot_instance import set_bot
 

@@ -92,7 +92,6 @@ async def act(messages, message):
 
     agent = dspy.ReAct(ChatAction, tools=list(TOOLS.values()))
     
-    # Use the current model context
     lm = ModelManager.get_lm()
     adapter = ModelManager.get_adapter()
     
@@ -108,10 +107,8 @@ async def act(messages, message):
         error_message = str(e)
         print(f"Error in act() function: {e}")
         
-    # Calculate execution time
     execution_time_ms = (time.time() - start_time) * 1000
     
-    # Prepare chat context data for collection
     chat_context_data = {
         'events': messages,
         'chat_id': message.channel.id,
@@ -123,14 +120,12 @@ async def act(messages, message):
         'message_content': message.content
     }
     
-    # Get model information
     current_model = ModelManager.get_current_model_name()
     model_config = {
         'model_name': current_model,
         'adapter': adapter.__class__.__name__ if adapter else 'None'
     }
     
-    # Collect interaction data
     try:
         if ENABLE_DATA_LOG:
             collect_interaction_data(
@@ -145,6 +140,5 @@ async def act(messages, message):
     except Exception as e:
         print(f"Warning: Failed to collect interaction data: {e}")
     
-    # Return the result (or None if there was an error)
     return result
 

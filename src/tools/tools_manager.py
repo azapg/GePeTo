@@ -1,7 +1,6 @@
 from typing import Dict, Callable
 import tools
 
-# Global registry to store all registered tools
 TOOLS: Dict[str, Callable] = {}
 
 def tool(func: Callable) -> Callable:
@@ -14,10 +13,8 @@ def tool(func: Callable) -> Callable:
     Returns:
         The original function, unchanged but registered
     """
-    # Register the function in the global TOOLS dictionary
     TOOLS[func.__name__] = func
     
-    # Return the original function unchanged
     return func
 
 def get_tool(name: str) -> Callable:

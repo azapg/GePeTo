@@ -1,0 +1,12 @@
+{
+  "bot_name": "GePeTo",
+  "main_language": "Spanish",
+  "server": {
+    "name": "Coreacraft",
+    "developer": { "name": "alamagain", "id": "759..." },
+    "admins": [
+      { "name": "adriiianhhh", "id": "789...", "role": "owner" },
+      { "name": "segmx", "id": "455...", "role": "admin" }
+    ]
+  }
+}

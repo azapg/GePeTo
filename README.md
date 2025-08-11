@@ -121,6 +121,70 @@ export OPENAI_API_KEY="your_openai_key_here"
 
 The system only stores references to environment variables, never actual API keys in the configuration files.
 
+## Prompt configuration
+
+GePeTo's conversation instructions are configurable via a JSON file at the project root: prompt.json (this file is git-ignored by default). If prompt.json is missing or invalid, a sensible template is used.
+
+Supported keys
+- bot_name (string): The bot’s display name used in the prompt. Default: "GePeTo".
+- main_language (string): Bot’s main language hint. If omitted, the bot replies in the chat’s language.
+- server (object, optional): Discord server context
+  - name (string)
+  - developer (object or array or string)
+  - admins (array of objects/arrays/strings)
+    - Accepted forms:
+      - { "name": "user", "id": "123", "role": "admin" }
+      - ["user", "123"]
+      - "user (123)"
+- custom_prompt (string or array, optional):
+  - If provided and non-empty, it completely replaces the template.
+  - If it’s an array, items are joined with "\n" to form the final prompt.
+
+Examples
+
+Minimal template (template-based prompt)
+```json
+{
+  "bot_name": "GePeTo",
+  "main_language": "Spanish"
+}
+```
+
+Template with server context
+```json
+{
+  "bot_name": "GePeTo",
+  "main_language": "Spanish",
+  "server": {
+    "name": "Coreacraft",
+    "developer": { "name": "alamagain", "id": "759..." },
+    "admins": [
+      { "name": "adriiianhhh", "id": "789...", "role": "owner" },
+      { "name": "segmx", "id": "455...", "role": "admin" }
+    ]
+  }
+}
+```
+
+Fully custom prompt (string; replaces template)
+```json
+{
+  "custom_prompt": "You are GePeTo. Keep answers short, operate in Discord, and always include the tool action fields."
+}
+```
+
+Fully custom prompt (array; joined with new lines; replaces template)
+```json
+{
+  "custom_prompt": [
+    "You are GePeTo, a friendly chatbot.",
+    "Operate inside Discord and keep answers short.",
+    "Always include [next_thought, next_tool_name, next_tool_args].",
+    "Reply in Spanish when appropriate."
+  ]
+}
+```
+
 # To-do
 Gepeto is pretty slow currently, even with +2000 T/s providers like [cerebras](https://www.cerebras.ai/), which introduces many bugs and boring behaviours. Because of this, the current work involves experimenting with the CoT, tool usage and inference. 
 

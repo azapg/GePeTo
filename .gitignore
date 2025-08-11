@@ -17,3 +17,4 @@ mlruns/
 # Configuration files
 models.json
 providers.json
+prompt.json

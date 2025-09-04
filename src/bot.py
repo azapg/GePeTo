@@ -35,9 +35,11 @@ async def main():
         if await process_commands(message):
             return
 
-        if bot.user not in message.mentions:
-            return
         if message.author == bot.user or message.author.bot:
+            return
+
+        is_private = (message.guild is None)  # DMs and Group DMs
+        if not is_private and bot.user not in message.mentions:
             return
 
         messages = [message async for message in message.channel.history(limit=15)]

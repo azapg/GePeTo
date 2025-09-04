@@ -2,9 +2,21 @@ import discord
 from discord.ext import commands
 import os
 import asyncio
+import sys
 from dotenv import load_dotenv
 
+# Check memory before importing heavy modules
+from util.memory_check import validate_memory_requirements, check_memory_before_import
+
+# Validate memory requirements early
+if not validate_memory_requirements():
+    print("Exiting due to insufficient memory.")
+    sys.exit(1)
+
+# Import heavy modules with memory awareness
+check_memory_before_import("agent")
 from agent import act
+check_memory_before_import("scrapper") 
 from scrapper import extract_minimal_message_data
 from bot_instance import set_bot
 

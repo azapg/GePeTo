@@ -1,6 +1,6 @@
 import os
 from .tools_manager import tool
-from util.discord import _get_channel, _get_message, _get_user
+from src.util.discord import get_channel, get_message, get_user
 
 @tool
 async def mark_as_typing(channel_id):
@@ -18,7 +18,7 @@ async def mark_as_typing(channel_id):
     Returns:
         bool: True if the bot successfully marked as typing, False otherwise.
     """
-    channel = await _get_channel(channel_id)
+    channel = await get_channel(channel_id)
     if not channel:
         raise ValueError(f"Channel with ID {channel_id} not found.")
     
@@ -36,7 +36,7 @@ async def reply_to_message(message_id, channel_id, content, mention=False):
         content (str): The content of the reply message.
         mention (bool): Whether to mention the user in the reply. Sometimes useful to get the user's attention.
     """
-    message = await _get_message(message_id, channel_id)
+    message = await get_message(message_id, channel_id)
     if not message:
         raise ValueError(f"Message with ID {message_id} not found in channel {channel_id}.")
     
@@ -46,7 +46,7 @@ async def reply_to_message(message_id, channel_id, content, mention=False):
 @tool        
 async def send_message(channel_id: int, content: str) -> bool:
     """Send a message to a specific channel."""
-    channel = await _get_channel(channel_id)
+    channel = await get_channel(channel_id)
     if not channel:
         raise ValueError(f"Channel with ID {channel_id} not found.")
     
@@ -63,7 +63,7 @@ async def send_private_message(user_id: int, content: str):
         content (str): The content of the private message.
         
     """
-    user = await _get_user(user_id)
+    user = await get_user(user_id)
     if not user:
         raise ValueError(f"User with ID {user_id} not found.")
     
@@ -80,7 +80,7 @@ async def edit_message(message_id, channel_id, content):
         channel_id (int): The ID of the channel where the message is located.
         content (str): The new content for the message.
     """
-    message = await _get_message(message_id, channel_id)
+    message = await get_message(message_id, channel_id)
     if not message:
         raise ValueError(f"Message with ID {message_id} not found in channel {channel_id}.")
 
@@ -97,7 +97,7 @@ async def delete_message(message_id, channel_id):
         channel_id (int): The ID of the channel where the message is located.
 
     """
-    message = await _get_message(message_id, channel_id)
+    message = await get_message(message_id, channel_id)
     if not message:
         raise ValueError(f"Message with ID {message_id} not found in channel {channel_id}.")
     
@@ -118,7 +118,7 @@ async def react_to_message(message_id, channel_id, emoji_id):
         emoji_id (str): The ID of the emoji to use for the reaction.
         
     """
-    message = await _get_message(message_id, channel_id)
+    message = await get_message(message_id, channel_id)
     if not message:
         raise ValueError(f"Message with ID {message_id} not found in channel {channel_id}.")
     emoji = await message.guild.fetch_emoji(emoji_id);

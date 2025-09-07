@@ -21,3 +21,10 @@ prompt.json
 
 # Test files
 test_*.py
+
+.idea/
+.vscode/
+*.iml
+.DS_Store
+.ipynb_checkpoints
+*.log

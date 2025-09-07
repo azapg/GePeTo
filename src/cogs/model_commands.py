@@ -76,10 +76,10 @@ class ModelCommands(commands.Cog):
         provider="Provider for the new model"
     )
     @app_commands.choices(action=[
-        app_commands.Choice(name="list", value="list"),
-        app_commands.Choice(name="current", value="current"),
-        app_commands.Choice(name="switch", value="switch"),
-        app_commands.Choice(name="add", value="add")
+        app_commands.Choice(name="📋 List Models", value="list"),
+        app_commands.Choice(name="🎯 Show Current", value="current"),
+        app_commands.Choice(name="🔄 Switch Model", value="switch"),
+        app_commands.Choice(name="➕ Add Model", value="add")
     ])
     async def model_command(
         self,
@@ -106,6 +106,11 @@ class ModelCommands(commands.Cog):
                     description="Please provide a model name to switch to.",
                     color=discord.Color.red()
                 )
+                embed.add_field(
+                    name="💡 Tip", 
+                    value="Use autocomplete when typing the model name!", 
+                    inline=False
+                )
                 await interaction.response.send_message(embed=embed, ephemeral=True)
                 return
             await self._handle_switch(interaction, model_name)
@@ -113,9 +118,11 @@ class ModelCommands(commands.Cog):
             if not all([model_name, display_name, provider]):
                 embed = discord.Embed(
                     title="❌ Missing Parameters",
-                    description="Please provide model_name, display_name, and provider to add a new model.",
+                    description="Please provide all required parameters:",
                     color=discord.Color.red()
                 )
+                embed.add_field(name="Required", value="• **model_name**: Unique identifier\n• **display_name**: Human-readable name\n• **provider**: Service provider", inline=False)
+                embed.add_field(name="💡 Tip", value="Use autocomplete for the provider field!", inline=False)
                 await interaction.response.send_message(embed=embed, ephemeral=True)
                 return
             await self._handle_add(interaction, model_name, display_name, provider)
@@ -127,6 +134,151 @@ class ModelCommands(commands.Cog):
     @model_command.autocomplete('provider')
     async def provider_autocomplete_handler(self, interaction: discord.Interaction, current: str):
         return await self.provider_autocomplete(interaction, current)
+    
+    @app_commands.command(name="model-info", description="Get detailed information about a specific model")
+    @app_commands.describe(model_name="Name of the model to get information about")
+    async def model_info_command(self, interaction: discord.Interaction, model_name: str):
+        """Get detailed information about a specific model"""
+        if not await self._admin_check(interaction):
+            return
+        
+        if not ModelManager.has_model(model_name):
+            embed = discord.Embed(
+                title="❌ Model Not Found",
+                description=f"Model `{model_name}` does not exist.",
+                color=discord.Color.red()
+            )
+            embed.add_field(
+                name="💡 Available Models", 
+                value="Use `/model list` to see all available models", 
+                inline=False
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            return
+        
+        try:
+            # Get model configuration details
+            ModelManager._load_configurations()
+            model_config = ModelManager._model_map.get(model_name, {})
+            current_model = ModelManager.get_current_model_name()
+            
+            embed = discord.Embed(
+                title=f"ℹ️ Model Information: {model_name}",
+                color=discord.Color.blue()
+            )
+            
+            # Add status indicator
+            status = "🟢 Active" if model_name == current_model else "⚪ Available"
+            embed.add_field(name="Status", value=status, inline=True)
+            
+            # Add configuration details
+            if 'name' in model_config:
+                embed.add_field(name="Display Name", value=f"`{model_config['name']}`", inline=True)
+            
+            if 'api_base' in model_config:
+                # Mask sensitive parts of API base
+                api_base = model_config['api_base']
+                if len(api_base) > 30:
+                    api_base = api_base[:15] + "..." + api_base[-10:]
+                embed.add_field(name="API Endpoint", value=f"`{api_base}`", inline=False)
+            
+            # Add usage tip
+            if model_name != current_model:
+                embed.add_field(
+                    name="🚀 Quick Switch", 
+                    value=f"Use `/model switch {model_name}` to activate this model", 
+                    inline=False
+                )
+            
+            embed.set_footer(text=f"Model ID: {model_name}")
+            
+        except Exception as e:
+            embed = discord.Embed(
+                title="❌ Error Retrieving Model Info",
+                description="Could not retrieve model information.",
+                color=discord.Color.red()
+            )
+            embed.add_field(name="Error", value=f"```{str(e)}```", inline=False)
+        
+        await interaction.response.send_message(embed=embed)
+    
+    @model_info_command.autocomplete('model_name')
+    async def model_info_autocomplete(self, interaction: discord.Interaction, current: str):
+        return await self.model_autocomplete(interaction, current)
+    
+    @app_commands.command(name="providers", description="List available model providers")
+    async def providers_command(self, interaction: discord.Interaction):
+        """List all available providers and their configurations"""
+        if not await self._admin_check(interaction):
+            return
+        
+        try:
+            import json
+            providers_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'providers.json')
+            
+            with open(providers_path, 'r') as f:
+                providers_data = json.load(f)
+            
+            if not providers_data:
+                embed = discord.Embed(
+                    title="📡 Available Providers",
+                    description="No providers configured.",
+                    color=discord.Color.orange()
+                )
+            else:
+                embed = discord.Embed(
+                    title="📡 Available Providers",
+                    description="Configured AI model providers:",
+                    color=discord.Color.blue()
+                )
+                
+                for provider_name, config in providers_data.items():
+                    api_base = config.get('api_base', 'Not specified')
+                    api_key_env = config.get('api_key_env', 'Not specified')
+                    
+                    # Check if API key is set
+                    key_status = "✅ Set" if os.getenv(api_key_env) else "❌ Missing"
+                    if not api_key_env or provider_name == 'ollama':  # Ollama might not need API key
+                        key_status = "➖ Not required"
+                    
+                    field_value = f"**Endpoint:** `{api_base}`\n**API Key:** {key_status}"
+                    if api_key_env and api_key_env != '':
+                        field_value += f"\n**Env Var:** `{api_key_env}`"
+                    
+                    embed.add_field(
+                        name=f"🔌 {provider_name.title()}",
+                        value=field_value,
+                        inline=True
+                    )
+                
+                embed.set_footer(text=f"Total: {len(providers_data)} providers | Use /model add to create models")
+        
+        except FileNotFoundError:
+            embed = discord.Embed(
+                title="❌ Providers Configuration Missing",
+                description="The providers.json file was not found.",
+                color=discord.Color.red()
+            )
+            embed.add_field(
+                name="💡 Solution",
+                value="Create a providers.json file in the project root with provider configurations.",
+                inline=False
+            )
+        except json.JSONDecodeError:
+            embed = discord.Embed(
+                title="❌ Invalid Configuration",
+                description="The providers.json file contains invalid JSON.",
+                color=discord.Color.red()
+            )
+        except Exception as e:
+            embed = discord.Embed(
+                title="❌ Error Loading Providers",
+                description="An unexpected error occurred.",
+                color=discord.Color.red()
+            )
+            embed.add_field(name="Error Details", value=f"```{str(e)}```", inline=False)
+        
+        await interaction.response.send_message(embed=embed)
     
     async def _handle_list(self, interaction: discord.Interaction):
         """Handle model list command"""
@@ -143,16 +295,16 @@ class ModelCommands(commands.Cog):
             model_list = []
             for model in models:
                 if model == current_model:
-                    model_list.append(f"🔹 **{model}** *(current)*")
+                    model_list.append(f"🟢 **{model}** *(current)*")
                 else:
-                    model_list.append(f"🔸 {model}")
+                    model_list.append(f"🔵 {model}")
             
             embed = discord.Embed(
                 title="📋 Available Models",
                 description="\n".join(model_list),
                 color=discord.Color.blue()
             )
-            embed.set_footer(text=f"Total: {len(models)} models")
+            embed.set_footer(text=f"Total: {len(models)} models | Use /model switch to change")
         
         await interaction.response.send_message(embed=embed)
     
@@ -166,11 +318,21 @@ class ModelCommands(commands.Cog):
                 description=f"**{current_model}**",
                 color=discord.Color.green()
             )
+            embed.add_field(
+                name="💡 Tip", 
+                value="Use `/model switch` to change to a different model", 
+                inline=False
+            )
         else:
             embed = discord.Embed(
                 title="🎯 Current Model",
                 description="No model is currently selected.",
                 color=discord.Color.orange()
+            )
+            embed.add_field(
+                name="💡 Next Steps", 
+                value="Use `/model list` to see available models", 
+                inline=False
             )
         
         await interaction.response.send_message(embed=embed)
@@ -179,10 +341,16 @@ class ModelCommands(commands.Cog):
         """Handle model switch command"""
         if ModelManager.set_model(model_name):
             embed = discord.Embed(
-                title="✅ Model Switched",
-                description=f"Successfully switched to **{model_name}**",
+                title="✅ Model Switched Successfully",
+                description=f"Now using **{model_name}**",
                 color=discord.Color.green()
             )
+            embed.add_field(
+                name="🔄 Status", 
+                value="All future AI responses will use this model", 
+                inline=False
+            )
+            embed.set_footer(text="Changes take effect immediately")
         else:
             available_models = ModelManager.get_model_names()
             embed = discord.Embed(
@@ -191,11 +359,13 @@ class ModelCommands(commands.Cog):
                 color=discord.Color.red()
             )
             if available_models:
+                models_text = "\n".join([f"• {model}" for model in available_models])
                 embed.add_field(
-                    name="Available Models",
-                    value=", ".join(available_models),
+                    name="📋 Available Models",
+                    value=models_text,
                     inline=False
                 )
+            embed.set_footer(text="Use autocomplete when typing the model name!")
         
         await interaction.response.send_message(embed=embed)
     
@@ -204,29 +374,55 @@ class ModelCommands(commands.Cog):
         try:
             if ModelManager.has_model(model_name):
                 embed = discord.Embed(
-                    title="❌ Model Exists",
+                    title="❌ Model Already Exists",
                     description=f"Model `{model_name}` already exists. Please use a different name.",
                     color=discord.Color.red()
+                )
+                embed.add_field(
+                    name="💡 Tip", 
+                    value="Use `/model list` to see existing models", 
+                    inline=False
                 )
                 await interaction.response.send_message(embed=embed)
                 return
             
             ModelManager.add_model(model_name, display_name, provider=provider)
             embed = discord.Embed(
-                title="✅ Model Added",
-                description=f"Successfully added model **{model_name}** with provider **{provider}**",
+                title="✅ Model Added Successfully",
+                description=f"**{model_name}** is now available for use!",
                 color=discord.Color.green()
             )
-            embed.add_field(name="Model Name", value=model_name, inline=True)
-            embed.add_field(name="Display Name", value=display_name, inline=True)
-            embed.add_field(name="Provider", value=provider, inline=True)
+            embed.add_field(name="🏷️ Model Name", value=f"`{model_name}`", inline=True)
+            embed.add_field(name="📛 Display Name", value=f"`{display_name}`", inline=True)
+            embed.add_field(name="🔌 Provider", value=f"`{provider}`", inline=True)
+            embed.add_field(
+                name="🚀 Next Steps", 
+                value=f"Use `/model switch {model_name}` to start using this model", 
+                inline=False
+            )
+            embed.set_footer(text="Model configuration saved dynamically")
             
         except Exception as e:
             embed = discord.Embed(
                 title="❌ Failed to Add Model",
-                description=f"Error: {str(e)}",
+                description=f"An error occurred while adding the model.",
                 color=discord.Color.red()
             )
+            embed.add_field(name="🐛 Error Details", value=f"```{str(e)}```", inline=False)
+            
+            # Provide helpful troubleshooting tips
+            if "API key" in str(e).lower():
+                embed.add_field(
+                    name="💡 Troubleshooting", 
+                    value="Make sure the required API key environment variable is set", 
+                    inline=False
+                )
+            elif "provider" in str(e).lower():
+                embed.add_field(
+                    name="💡 Available Providers", 
+                    value="Use autocomplete to see valid provider options", 
+                    inline=False
+                )
         
         await interaction.response.send_message(embed=embed)
 

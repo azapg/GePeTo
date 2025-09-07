@@ -57,7 +57,8 @@ async def act(messages, message):
         events=messages,
         chat_id=message.channel.id,
         chat_name=message.channel.name if message.channel.type == discord.ChannelType.text else message.author.display_name + "DM" if message.channel.type == discord.ChannelType.private else "unknown-chat",
-        chat_type=message.channel.type.name if hasattr(message.channel, 'type') else 'unknown'
+        chat_type=message.channel.type.name if hasattr(message.channel, 'type') else 'unknown',
+        guild_id=message.guild.id if message.guild else None,
     )
 
     tool_context = ToolContext(initiator=message, permissions_checker=permissions_checker,

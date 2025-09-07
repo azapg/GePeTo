@@ -24,7 +24,6 @@ load_dotenv()
 
 from util.verbosity import LOG_VERBOSITY
 from util.log import _format_message_context
-from util.commands import process_commands
 
 async def main():
     intents = discord.Intents.default()
@@ -59,9 +58,6 @@ async def main():
 
     @bot.event
     async def on_message(message):
-        if await process_commands(message):
-            return
-
         if message.author == bot.user or message.author.bot:
             return
 

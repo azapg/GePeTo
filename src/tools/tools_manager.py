@@ -65,7 +65,6 @@ class ProtectedTool:
         return await self.original_func(*args, **kwargs)
 
 
-# def tool(permissions: Optional[List[str]] = None, needs_confirmation: Optional[bool] = False):
 def tool(_func: Optional[Callable] = None, *, permissions: Optional[List[str]] = None,
          needs_confirmation: bool = False):
     """

@@ -1,6 +1,7 @@
 from util.discord import get_bot, get_guild
 from .tools_manager import tool
 
+
 @tool(permissions=["manage_channels"], needs_confirmation=True)
 async def create_channel(guild_id: int, name: str, channel_type: str = "text") -> int:
     """

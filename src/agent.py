@@ -9,7 +9,6 @@ from data_collector import collect_interaction_data
 from model_manager import ModelManager
 from views.confirm import ConfirmView
 from tools.tools_manager import tools_with_context, ToolContext
-from src.util.discord import get_user
 
 mlflow.dspy.autolog()
 mlflow.set_experiment("GePeTo")

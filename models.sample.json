@@ -1,5 +1,8 @@
 {
   "default": "kimi-fast",
+  "user_limit": 100000,
+  "guild_limit": 500000,
+  "time_window_days": 30,
   "models": [
     {
       "label": "kimi-fast",

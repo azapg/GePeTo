@@ -260,7 +260,7 @@ class TokenManagerV2:
         
         return result
     
-    def can_process_request(self, user_id: int, guild_id: Optional[int], model: str, estimated_tokens: int = 0) -> Tuple[bool, Dict[str, Any]]:
+    def can_process_request(self, user_id: int, guild_id: Optional[int], model: str, estimated_tokens: int = 0, user_roles: List[int] = None) -> Tuple[bool, Dict[str, Any]]:
         """Check if a request can be processed based on the new token hierarchy"""
         config = self._load_limits_config()
         
@@ -273,7 +273,7 @@ class TokenManagerV2:
         
         if guild_limits['has_pool']:
             # Guild has a token pool - check if user can consume from it
-            return self._check_guild_pool_limits(user_id, guild_id, model, config, guild_limits, estimated_tokens)
+            return self._check_guild_pool_limits(user_id, guild_id, model, config, guild_limits, estimated_tokens, user_roles)
         else:
             # No guild pool - fall back to user limits
             return self._check_user_only_limits(user_id, model, config, estimated_tokens)
@@ -307,7 +307,7 @@ class TokenManagerV2:
             'can_process': can_process
         }
     
-    def _check_guild_pool_limits(self, user_id: int, guild_id: int, model: str, config: LimitsConfig, guild_limits: Dict, estimated_tokens: int) -> Tuple[bool, Dict[str, Any]]:
+    def _check_guild_pool_limits(self, user_id: int, guild_id: int, model: str, config: LimitsConfig, guild_limits: Dict, estimated_tokens: int, user_roles: List[int] = None) -> Tuple[bool, Dict[str, Any]]:
         """Check guild pool limits and member limits"""
         # Check if user bypasses guild limits
         if str(user_id) in guild_limits['member_bypasses']:
@@ -327,13 +327,24 @@ class TokenManagerV2:
             return self._check_user_fallback_limits(user_id, model, config, estimated_tokens, pool_usage)
         
         # Check member limits within guild pool
-        if guild_limits['member_limit']:
+        member_limit = guild_limits['member_limit']
+        
+        # Check for role-based limits (higher priority than default member limit)
+        if user_roles and guild_limits['role_limits']:
+            for role_id in user_roles:
+                if str(role_id) in guild_limits['role_limits']:
+                    member_limit = guild_limits['role_limits'][str(role_id)]
+                    break  # Use the first matching role limit found
+        
+        if member_limit:
             member_usage = self._get_user_guild_model_usage(user_id, guild_id, model, config.time_window_days)
-            member_remaining = guild_limits['member_limit'] - member_usage['total_tokens']
+            member_remaining = member_limit - member_usage['total_tokens']
             
             if member_remaining <= estimated_tokens:
                 # Member limit exceeded - fall back to user limits
                 return self._check_user_fallback_limits(user_id, model, config, estimated_tokens, pool_usage, member_usage)
+        else:
+            member_usage = None
         
         # Can use guild pool
         return True, {
@@ -343,8 +354,8 @@ class TokenManagerV2:
                 'pool_size': guild_limits['pool_size'],
                 'pool_usage': pool_usage,
                 'pool_remaining': pool_remaining,
-                'member_limit': guild_limits['member_limit'],
-                'member_usage': member_usage if guild_limits['member_limit'] else None
+                'member_limit': member_limit,
+                'member_usage': member_usage
             },
             'can_process': True
         }

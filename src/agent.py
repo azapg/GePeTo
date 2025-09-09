@@ -27,8 +27,13 @@ async def act(messages, message):
     # Get current model name for limit checking
     current_model = ModelManager.get_current_model_name()
     
+    # Get user roles if in a guild
+    user_roles = None
+    if guild_id and hasattr(message.author, 'roles'):
+        user_roles = [role.id for role in message.author.roles]
+    
     # Check if user/guild can process request
-    can_process, limit_info = token_manager.can_process_request(user_id, guild_id, current_model)
+    can_process, limit_info = token_manager.can_process_request(user_id, guild_id, current_model, 0, user_roles)
     
     if not can_process:
         # Send limit exceeded message

@@ -268,6 +268,11 @@ class ModelCommands(commands.Cog):
         # Get current model for context
         current_model = ModelManager.get_current_model_name()
         
+        # Get user roles if in a guild
+        user_roles = None
+        if guild_id and hasattr(interaction.user, 'roles'):
+            user_roles = [role.id for role in interaction.user.roles]
+        
         embed = discord.Embed(
             title="🪙 Token Usage",
             description=f"Current model: **{current_model}**",
@@ -275,7 +280,7 @@ class ModelCommands(commands.Cog):
         )
         
         # Check current model limits
-        can_process, limit_info = token_manager.can_process_request(user_id, guild_id, current_model)
+        can_process, limit_info = token_manager.can_process_request(user_id, guild_id, current_model, 0, user_roles)
         
         user_info = limit_info.get("user", {})
         guild_info = limit_info.get("guild", {})

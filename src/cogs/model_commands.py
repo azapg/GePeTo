@@ -4,7 +4,7 @@ from discord.ext import commands
 from discord import app_commands
 from typing import List, Optional
 from model_manager import ModelManager
-from token_manager import get_token_manager
+from token_manager_v2 import get_token_manager
 from util.model_operations import handle_list, handle_current, handle_switch, handle_add
 
 
@@ -260,40 +260,55 @@ class ModelCommands(commands.Cog):
     
     @app_commands.command(name="token-usage", description="🪙 Check your token usage")
     async def token_usage_command(self, interaction: discord.Interaction):
-        """Check token usage for user and guild"""
+        """Check token usage for user and guild with new per-model system"""
         token_manager = get_token_manager()
         user_id = interaction.user.id
         guild_id = interaction.guild.id if interaction.guild else None
         
-        # Get usage data
-        user_usage = token_manager.get_user_usage(user_id)
-        guild_usage = token_manager.get_guild_usage(guild_id) if guild_id else None
-        
-        # Check limits
-        user_ok, user_info = token_manager.check_user_limit(user_id)
-        guild_ok, guild_info = token_manager.check_guild_limit(guild_id)
+        # Get current model for context
+        current_model = ModelManager.get_current_model_name()
         
         embed = discord.Embed(
             title="🪙 Token Usage",
+            description=f"Current model: **{current_model}**",
             color=discord.Color.blue()
         )
         
-        # User usage
-        user_status = "✅" if user_ok else "❌"
-        user_text = f"{user_status} **{user_usage['total_tokens']:,}** tokens used"
+        # Check current model limits
+        can_process, limit_info = token_manager.can_process_request(user_id, guild_id, current_model)
         
-        if "limit" in user_info:
+        user_info = limit_info.get("user", {})
+        guild_info = limit_info.get("guild", {})
+        
+        # User status
+        user_status = "✅" if can_process else "❌"
+        user_text = f"{user_status} "
+        
+        if user_info.get("unlimited"):
+            user_text += "**Unlimited access**"
+        elif "usage" in user_info:
+            usage = user_info["usage"]
+            limit = user_info.get("limit", 0)
+            user_text += f"**{usage['total_tokens']:,}** / **{limit:,}** tokens used"
+            if limit > 0:
+                percentage = (usage['total_tokens'] / limit) * 100
+                user_text += f" ({percentage:.1f}%)"
             remaining = user_info.get("remaining", 0)
-            limit = user_info["limit"]
-            percentage = (user_usage['total_tokens'] / limit) * 100 if limit > 0 else 0
-            user_text += f" / **{limit:,}** ({percentage:.1f}%)"
             user_text += f"\n🔄 **{remaining:,}** tokens remaining"
-        elif user_info.get("bypass"):
-            user_text += " (unlimited access)"
+            user_text += f"\n📊 **{usage['call_count']}** calls in last {usage['timeframe_days']} days"
         else:
-            user_text += " (no limits configured)"
+            user_text += "No usage data available"
         
-        user_text += f"\n📊 **{user_usage['call_count']}** calls in last {user_usage['timeframe_days']} days"
+        # Add charge source info
+        charge_source = user_info.get("charge_source", "unknown")
+        if charge_source == "guild_pool":
+            user_text += "\n💰 Using server token pool"
+        elif charge_source == "user_pool":
+            user_text += "\n👤 Using personal token pool"
+        elif charge_source == "user_fallback":
+            user_text += "\n🔄 Using personal fallback (server pool exhausted)"
+        elif charge_source == "unlimited":
+            user_text += "\n♾️ Unlimited access"
         
         embed.add_field(
             name="👤 Your Usage",
@@ -301,41 +316,41 @@ class ModelCommands(commands.Cog):
             inline=False
         )
         
-        # Guild usage (if applicable)
-        if guild_usage and guild_id:
-            guild_status = "✅" if guild_ok else "❌"
-            guild_text = f"{guild_status} **{guild_usage['total_tokens']:,}** tokens used"
+        # Guild info (if applicable)
+        if guild_id and guild_info.get("has_pool"):
+            guild_status = "✅" if not guild_info.get("pool_exhausted") else "❌"
+            guild_text = f"{guild_status} "
             
-            if "limit" in guild_info:
-                remaining = guild_info.get("remaining", 0)
-                limit = guild_info["limit"]
-                percentage = (guild_usage['total_tokens'] / limit) * 100 if limit > 0 else 0
-                guild_text += f" / **{limit:,}** ({percentage:.1f}%)"
-                guild_text += f"\n🔄 **{remaining:,}** tokens remaining"
-            elif guild_info.get("bypass"):
-                guild_text += " (unlimited access)"
-            else:
-                guild_text += " (no limits configured)"
+            if "pool_usage" in guild_info:
+                pool_usage = guild_info["pool_usage"]
+                pool_size = guild_info.get("pool_size", 0)
+                guild_text += f"**{pool_usage['total_tokens']:,}** / **{pool_size:,}** pool tokens used"
+                if pool_size > 0:
+                    percentage = (pool_usage['total_tokens'] / pool_size) * 100
+                    guild_text += f" ({percentage:.1f}%)"
+                remaining = guild_info.get("pool_remaining", 0)
+                guild_text += f"\n🔄 **{remaining:,}** pool tokens remaining"
+                guild_text += f"\n👥 **{pool_usage['unique_users']}** users, **{pool_usage['call_count']}** calls"
             
-            guild_text += f"\n📊 **{guild_usage['call_count']}** calls by **{guild_usage['unique_users']}** users"
+            # Member limit info
+            if guild_info.get("member_limit") and "member_usage" in guild_info:
+                member_usage = guild_info["member_usage"]
+                member_limit = guild_info["member_limit"]
+                guild_text += f"\n👤 Your server usage: **{member_usage['total_tokens']:,}** / **{member_limit:,}** tokens"
             
             embed.add_field(
-                name="🏠 Server Usage",
+                name="🏠 Server Token Pool",
                 value=guild_text,
                 inline=False
             )
-        
-        # Breakdown
-        if user_usage['total_tokens'] > 0:
-            breakdown = f"📝 **{user_usage['prompt_tokens']:,}** prompt tokens\n"
-            breakdown += f"🤖 **{user_usage['completion_tokens']:,}** completion tokens"
+        elif guild_id:
             embed.add_field(
-                name="📈 Breakdown",
-                value=breakdown,
-                inline=True
+                name="🏠 Server Status",
+                value="❌ No server token pool configured\nUsing personal token limits",
+                inline=False
             )
         
-        if not user_ok or (guild_id and not guild_ok):
+        if not can_process:
             embed.add_field(
                 name="⚠️ Limit Exceeded",
                 value="You cannot use the bot until limits reset or are increased.",
@@ -348,7 +363,7 @@ class ModelCommands(commands.Cog):
     
     @app_commands.command(name="token-stats", description="📊 View overall token statistics (Admin only)")
     async def token_stats_command(self, interaction: discord.Interaction):
-        """View overall token usage statistics"""
+        """View overall token usage statistics with new system features"""
         if not await self._admin_check(interaction):
             return
         
@@ -412,7 +427,26 @@ class ModelCommands(commands.Cog):
                 inline=False
             )
         
-        embed.set_footer(text="Statistics are calculated from recorded usage data")
+        # Charge source breakdown (new feature)
+        if stats['charge_sources']:
+            charge_text = ""
+            for source in stats['charge_sources']:
+                charge_source = source['charge_source']
+                icon = {
+                    'guild_pool': '🏠',
+                    'user_pool': '👤', 
+                    'user_fallback': '🔄',
+                    'unlimited': '♾️',
+                    'user': '👤'  # legacy
+                }.get(charge_source, '❓')
+                charge_text += f"{icon} **{charge_source.replace('_', ' ').title()}**: {source['total_tokens']:,} tokens\n"
+            embed.add_field(
+                name="💰 Token Source Breakdown",
+                value=charge_text,
+                inline=False
+            )
+        
+        embed.set_footer(text="Statistics include new guild pool and per-model tracking")
         
         await interaction.response.send_message(embed=embed)
 

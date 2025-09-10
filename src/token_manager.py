@@ -213,10 +213,13 @@ class TokenManager:
         if days is None:
             days = self.default_limits["time_window_days"]
         
-        cutoff_date = (datetime.now() - timedelta(days=days)).isoformat()
+        # Use consistent timestamp format with timezone awareness
+        cutoff_datetime = datetime.now() - timedelta(days=days)
+        cutoff_date = cutoff_datetime.isoformat()
         
         with self._get_db_connection() as conn:
             cursor = conn.cursor()
+            # Use a more robust timestamp comparison that handles format variations
             cursor.execute("""
                 SELECT 
                     SUM(completion_tokens) as total_completion,
@@ -224,7 +227,7 @@ class TokenManager:
                     SUM(total_tokens) as total_tokens,
                     COUNT(*) as call_count
                 FROM token_usage 
-                WHERE user_id = ? AND model = ? AND timestamp >= ?
+                WHERE user_id = ? AND model = ? AND datetime(timestamp) >= datetime(?)
             """, (user_id, model, cutoff_date))
             
             result = cursor.fetchone()
@@ -282,7 +285,8 @@ class TokenManager:
     
     def get_usage_statistics(self, days: int = 30) -> Dict[str, Any]:
         """Get overall usage statistics"""
-        cutoff_date = (datetime.now() - timedelta(days=days)).isoformat()
+        cutoff_datetime = datetime.now() - timedelta(days=days)
+        cutoff_date = cutoff_datetime.isoformat()
         
         with self._get_db_connection() as conn:
             cursor = conn.cursor()
@@ -298,7 +302,7 @@ class TokenManager:
                     COUNT(DISTINCT guild_id) as unique_guilds,
                     COUNT(DISTINCT session_id) as unique_sessions
                 FROM token_usage 
-                WHERE timestamp >= ?
+                WHERE datetime(timestamp) >= datetime(?)
             """, (cutoff_date,))
             
             overall = dict(cursor.fetchone())
@@ -310,7 +314,7 @@ class TokenManager:
                     SUM(total_tokens) as total_tokens,
                     COUNT(*) as call_count
                 FROM token_usage 
-                WHERE timestamp >= ?
+                WHERE datetime(timestamp) >= datetime(?)
                 GROUP BY user_id
                 ORDER BY total_tokens DESC
                 LIMIT 10
@@ -326,7 +330,7 @@ class TokenManager:
                     COUNT(*) as call_count,
                     COUNT(DISTINCT user_id) as unique_users
                 FROM token_usage 
-                WHERE timestamp >= ? AND guild_id IS NOT NULL
+                WHERE datetime(timestamp) >= datetime(?) AND guild_id IS NOT NULL
                 GROUP BY guild_id
                 ORDER BY total_tokens DESC
                 LIMIT 10
@@ -342,7 +346,7 @@ class TokenManager:
                     COUNT(*) as call_count,
                     AVG(total_tokens) as avg_tokens_per_call
                 FROM token_usage 
-                WHERE timestamp >= ?
+                WHERE datetime(timestamp) >= datetime(?)
                 GROUP BY model
                 ORDER BY total_tokens DESC
             """, (cutoff_date,))
@@ -390,8 +394,27 @@ def extract_token_usage_from_history(
         prompt_tokens = usage_info.get('prompt_tokens', 0)
         total_tokens = usage_info.get('total_tokens', 0)
         
-        # Get timestamp and model
-        timestamp = call.get('timestamp', datetime.now().isoformat())
+        # Get timestamp and model - ensure consistent format
+        raw_timestamp = call.get('timestamp', datetime.now().isoformat())
+        
+        # Ensure timestamp is in consistent ISO format
+        try:
+            # If raw_timestamp is a string in some other format, try to parse and convert
+            if isinstance(raw_timestamp, str):
+                # Try to parse various timestamp formats and convert to our standard
+                try:
+                    parsed_dt = datetime.fromisoformat(raw_timestamp.replace('Z', '+00:00'))
+                    timestamp = parsed_dt.isoformat()
+                except ValueError:
+                    # If parsing fails, use current time
+                    timestamp = datetime.now().isoformat()
+            else:
+                # If not a string, assume it's a datetime object
+                timestamp = raw_timestamp.isoformat() if hasattr(raw_timestamp, 'isoformat') else datetime.now().isoformat()
+        except Exception:
+            # Fallback to current time if anything goes wrong
+            timestamp = datetime.now().isoformat()
+            
         model = call.get('model', 'unknown')
         
         usage_data.append(TokenUsage(

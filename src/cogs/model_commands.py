@@ -258,34 +258,35 @@ class ModelCommands(commands.Cog):
         
         await interaction.response.send_message(embed=embed)
     
-    @app_commands.command(name="token-usage", description="🪙 Check your token usage")
+    @app_commands.command(name="usage", description="🪙 Check your token usage")
     async def token_usage_command(self, interaction: discord.Interaction):
         """Check token usage for user with new simplified per-model system"""
         token_manager = get_token_manager()
         user_id = interaction.user.id
         guild_id = interaction.guild.id if interaction.guild else None
-        
         # Get current model for context
         current_model = ModelManager.get_current_model_name()
-        
+
         embed = discord.Embed(
             title="🪙 Token Usage",
             description=f"Current model: **{current_model}**",
             color=discord.Color.blue()
         )
-        
+
         # Check current model limits and usage
         can_process, limit_info = token_manager.can_process_request(user_id, guild_id, current_model)
-        
+
         user_info = limit_info.get("user", {})
-        
+
         # User status for current model
         user_status = "✅" if can_process else "❌"
         user_text = f"{user_status} "
-        
+
         if user_info.get("unlimited"):
             user_text += "**Unlimited access**"
+            print('asd')
         elif "usage" in user_info:
+            print('hi')
             usage = user_info["usage"]
             limit = user_info.get("limit", 0)
             user_text += f"**{usage['total_tokens']:,}** / **{limit:,}** tokens used"
@@ -295,24 +296,26 @@ class ModelCommands(commands.Cog):
             remaining = user_info.get("remaining", 0)
             user_text += f"\n🔄 **{remaining:,}** tokens remaining"
             user_text += f"\n📊 **{usage['call_count']}** calls in last {usage['timeframe_days']} days"
+            print('aaa')
         else:
             user_text += "No usage data available"
-        
+        print('hi1')
+
         embed.add_field(
             name=f"👤 Your Usage ({current_model})",
             value=user_text,
             inline=False
         )
-        
+
         if not can_process:
             embed.add_field(
                 name="⚠️ Limit Exceeded",
                 value="You cannot use this model until limits reset or are increased.",
                 inline=False
             )
-        
+
         embed.set_footer(text="Token usage resets every 30 days • Contact admin for limit increases")
-        
+        print('?')
         await interaction.response.send_message(embed=embed, ephemeral=True)
     
     @app_commands.command(name="token-stats", description="📊 View overall token statistics (Admin only)")

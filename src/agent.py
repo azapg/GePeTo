@@ -28,7 +28,7 @@ async def act(messages, message):
     current_model = ModelManager.get_current_model_name()
     
     # Check if user can process request for this specific model
-    can_process, limit_info = token_manager.can_process_request(user_id, guild_id, current_model)
+    can_process, limit_info = token_manager.can_process_request(user_id, current_model)
     
     if not can_process:
         # Send limit exceeded message
@@ -125,6 +125,10 @@ async def act(messages, message):
     # Calculate total tokens for data collector (backward compatibility)
     total_tokens_used = sum(usage.total_tokens for usage in token_usage_data) if token_usage_data else None
 
+    # TODO: Cost estimation can be added if we define pricing in models.json
+    # TODO: collect_interaction_data() (and in general, the data collector)
+    #  should be refactored to accept a session id, since the collected session
+    #  id is different from the one used in token usage
     try:
         if ENABLE_DATA_LOG:
             collect_interaction_data(

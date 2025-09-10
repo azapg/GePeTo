@@ -240,7 +240,7 @@ class TokenManager:
                 "timeframe_days": days
             }
     
-    def can_process_request(self, user_id: int, guild_id: Optional[int], model: str) -> Tuple[bool, Dict[str, Any]]:
+    def can_process_request(self, user_id: int, model: str) -> Tuple[bool, Dict[str, Any]]:
         """Check if a request can be processed based on user token limits for the specific model"""
         user_limit = self.get_user_limit(user_id, model)
         
@@ -270,18 +270,6 @@ class TokenManager:
                 "timeframe_days": self.default_limits["time_window_days"]
             }
         }
-    
-    def get_session_usage(self, session_id: str) -> List[Dict[str, Any]]:
-        """Get all token usage for a specific session"""
-        with self._get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT * FROM token_usage 
-                WHERE session_id = ? 
-                ORDER BY call_index
-            """, (session_id,))
-            
-            return [dict(row) for row in cursor.fetchall()]
     
     def get_usage_statistics(self, days: int = 30) -> Dict[str, Any]:
         """Get overall usage statistics"""

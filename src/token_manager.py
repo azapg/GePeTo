@@ -1,6 +1,6 @@
 """
-Token tracking and management system for GePeTo
-Provides SQLite-based storage for user and guild token usage with configurable limits
+Simplified token tracking and management system for GePeTo
+Provides SQLite-based storage for per-user per-model token usage with configurable limits
 """
 
 import sqlite3
@@ -27,20 +27,21 @@ class TokenUsage:
     session_id: str
     call_index: int  # Index of this call within the session
 
-@dataclass 
-class TokenLimits:
-    """Represents token limits configuration"""
-    user_limit: Optional[int] = None
-    guild_limit: Optional[int] = None
-    time_window_days: int = 30  # Default to monthly limits
-
 class TokenManager:
-    """Manages token usage tracking and limits enforcement"""
+    """Simplified token manager - per-user per-model limits only"""
     
-    def __init__(self, db_path: str = "data/token_usage.db", bypasses_path: str = "token_bypasses.json"):
+    def __init__(self, db_path: str = "data/token_usage.db"):
         self.db_path = Path(db_path)
-        self.bypasses_path = Path(bypasses_path)
         self._lock = threading.Lock()
+        
+        # Default limits per model (can be customized per user)
+        self.default_limits = {
+            "time_window_days": 30,
+            "default_limit": 100000,  # 100k tokens per user per model per month
+        }
+        
+        # User-specific limits stored in memory (could be moved to DB later)
+        self.user_limits = {}  # {user_id: {model: limit_or_-1_for_unlimited}}
         
         # Ensure database directory exists
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -71,15 +72,22 @@ class TokenManager:
                 )
             """)
             
-            # Create indexes for efficient querying
+            # User limits table for persistent storage
             cursor.execute("""
-                CREATE INDEX IF NOT EXISTS idx_user_timestamp 
-                ON token_usage(user_id, timestamp)
+                CREATE TABLE IF NOT EXISTS user_limits (
+                    user_id INTEGER NOT NULL,
+                    model TEXT NOT NULL,
+                    token_limit INTEGER NOT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (user_id, model)
+                )
             """)
             
+            # Create indexes for efficient querying
             cursor.execute("""
-                CREATE INDEX IF NOT EXISTS idx_guild_timestamp 
-                ON token_usage(guild_id, timestamp)
+                CREATE INDEX IF NOT EXISTS idx_user_model_timestamp 
+                ON token_usage(user_id, model, timestamp)
             """)
             
             cursor.execute("""
@@ -88,6 +96,9 @@ class TokenManager:
             """)
             
             conn.commit()
+            
+        # Load user limits from database
+        self._load_user_limits()
     
     @contextmanager
     def _get_db_connection(self):
@@ -101,40 +112,68 @@ class TokenManager:
             if conn:
                 conn.close()
     
-    def _load_bypasses(self) -> Dict[str, Any]:
-        """Load token limit bypasses from JSON file"""
-        if not self.bypasses_path.exists():
-            return {"users": [], "guilds": []}
-        
-        try:
-            with open(self.bypasses_path, 'r') as f:
-                return json.load(f)
-        except (json.JSONDecodeError, IOError):
-            return {"users": [], "guilds": []}
-    
-    def _load_token_limits(self) -> TokenLimits:
-        """Load token limits from models.json"""
-        models_path = Path(__file__).parent.parent / "models.json"
-        
-        if not models_path.exists():
-            return TokenLimits()  # No limits if file doesn't exist
-        
-        try:
-            with open(models_path, 'r') as f:
-                config = json.load(f)
-                
-            # Look for limits in the config
-            user_limit = config.get('user_limit')
-            guild_limit = config.get('guild_limit')
-            time_window_days = config.get('time_window_days', 30)
+    def _load_user_limits(self):
+        """Load user limits from database into memory"""
+        with self._get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT user_id, model, token_limit FROM user_limits")
             
-            return TokenLimits(
-                user_limit=user_limit,
-                guild_limit=guild_limit,
-                time_window_days=time_window_days
-            )
-        except (json.JSONDecodeError, IOError):
-            return TokenLimits()
+            self.user_limits = {}
+            for row in cursor.fetchall():
+                user_id = row["user_id"]
+                model = row["model"]
+                limit = row["token_limit"]
+                
+                if user_id not in self.user_limits:
+                    self.user_limits[user_id] = {}
+                self.user_limits[user_id][model] = limit
+    
+    def set_user_limit(self, user_id: int, model: str, limit: int):
+        """Set token limit for a user for a specific model (-1 for unlimited)"""
+        with self._lock:
+            with self._get_db_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    INSERT OR REPLACE INTO user_limits (user_id, model, token_limit, updated_at)
+                    VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+                """, (user_id, model, limit))
+                conn.commit()
+            
+            # Update in-memory cache
+            if user_id not in self.user_limits:
+                self.user_limits[user_id] = {}
+            self.user_limits[user_id][model] = limit
+    
+    def get_user_limit(self, user_id: int, model: str) -> int:
+        """Get token limit for a user for a specific model"""
+        if user_id in self.user_limits and model in self.user_limits[user_id]:
+            return self.user_limits[user_id][model]
+        return self.default_limits["default_limit"]
+    
+    def set_user_limit_all_models(self, user_id: int, limit: int):
+        """Set the same limit for a user across all models"""
+        # Get all unique models from usage history
+        with self._get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT DISTINCT model FROM token_usage")
+            models = [row["model"] for row in cursor.fetchall()]
+        
+        # Also include any models the user already has limits for
+        if user_id in self.user_limits:
+            models.extend(self.user_limits[user_id].keys())
+        
+        # Remove duplicates and set limit for each model
+        models = list(set(models))
+        for model in models:
+            self.set_user_limit(user_id, model, limit)
+    
+    def reset_user_usage(self, user_id: int):
+        """Reset (delete) all usage for a user"""
+        with self._lock:
+            with self._get_db_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("DELETE FROM token_usage WHERE user_id = ?", (user_id,))
+                conn.commit()
     
     def record_token_usage(self, usage_data: List[TokenUsage]) -> bool:
         """Record token usage for a session"""
@@ -169,11 +208,10 @@ class TokenManager:
                 print(f"Error recording token usage: {e}")
                 return False
     
-    def get_user_usage(self, user_id: int, days: Optional[int] = None) -> Dict[str, int]:
-        """Get token usage for a user within specified timeframe"""
-        limits = self._load_token_limits()
+    def get_user_usage(self, user_id: int, model: str, days: Optional[int] = None) -> Dict[str, int]:
+        """Get token usage for a user for a specific model within specified timeframe"""
         if days is None:
-            days = limits.time_window_days
+            days = self.default_limits["time_window_days"]
         
         cutoff_date = (datetime.now() - timedelta(days=days)).isoformat()
         
@@ -186,8 +224,8 @@ class TokenManager:
                     SUM(total_tokens) as total_tokens,
                     COUNT(*) as call_count
                 FROM token_usage 
-                WHERE user_id = ? AND timestamp >= ?
-            """, (user_id, cutoff_date))
+                WHERE user_id = ? AND model = ? AND timestamp >= ?
+            """, (user_id, model, cutoff_date))
             
             result = cursor.fetchone()
             
@@ -199,100 +237,35 @@ class TokenManager:
                 "timeframe_days": days
             }
     
-    def get_guild_usage(self, guild_id: int, days: Optional[int] = None) -> Dict[str, int]:
-        """Get token usage for a guild within specified timeframe"""
-        limits = self._load_token_limits()
-        if days is None:
-            days = limits.time_window_days
+    def can_process_request(self, user_id: int, guild_id: Optional[int], model: str) -> Tuple[bool, Dict[str, Any]]:
+        """Check if a request can be processed based on user token limits for the specific model"""
+        user_limit = self.get_user_limit(user_id, model)
         
-        cutoff_date = (datetime.now() - timedelta(days=days)).isoformat()
-        
-        with self._get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT 
-                    SUM(completion_tokens) as total_completion,
-                    SUM(prompt_tokens) as total_prompt,
-                    SUM(total_tokens) as total_tokens,
-                    COUNT(*) as call_count,
-                    COUNT(DISTINCT user_id) as unique_users
-                FROM token_usage 
-                WHERE guild_id = ? AND timestamp >= ?
-            """, (guild_id, cutoff_date))
-            
-            result = cursor.fetchone()
-            
-            return {
-                "completion_tokens": result["total_completion"] or 0,
-                "prompt_tokens": result["total_prompt"] or 0,
-                "total_tokens": result["total_tokens"] or 0,
-                "call_count": result["call_count"] or 0,
-                "unique_users": result["unique_users"] or 0,
-                "timeframe_days": days
+        # Unlimited access
+        if user_limit == -1:
+            return True, {
+                "user": {
+                    "unlimited": True,
+                    "limit": -1,
+                    "model": model
+                }
             }
-    
-    def check_user_limit(self, user_id: int) -> Tuple[bool, Dict[str, Any]]:
-        """Check if user has exceeded token limits"""
-        limits = self._load_token_limits()
-        bypasses = self._load_bypasses()
         
-        # Check if user has bypass
-        if user_id in bypasses.get("users", []):
-            return True, {"bypass": True, "reason": "User has unlimited access"}
+        # Get usage for this user and model
+        usage = self.get_user_usage(user_id, model)
         
-        # No limits configured
-        if limits.user_limit is None:
-            return True, {"no_limits": True}
-        
-        usage = self.get_user_usage(user_id, limits.time_window_days)
-        
-        within_limit = usage["total_tokens"] < limits.user_limit
+        within_limit = usage["total_tokens"] < user_limit
+        remaining = max(0, user_limit - usage["total_tokens"])
         
         return within_limit, {
-            "limit": limits.user_limit,
-            "usage": usage,
-            "remaining": max(0, limits.user_limit - usage["total_tokens"]),
-            "timeframe_days": limits.time_window_days
-        }
-    
-    def check_guild_limit(self, guild_id: Optional[int]) -> Tuple[bool, Dict[str, Any]]:
-        """Check if guild has exceeded token limits"""
-        if guild_id is None:
-            return True, {"dm": True, "reason": "DM channels have no guild limits"}
-        
-        limits = self._load_token_limits()
-        bypasses = self._load_bypasses()
-        
-        # Check if guild has bypass
-        if guild_id in bypasses.get("guilds", []):
-            return True, {"bypass": True, "reason": "Guild has unlimited access"}
-        
-        # No limits configured
-        if limits.guild_limit is None:
-            return True, {"no_limits": True}
-        
-        usage = self.get_guild_usage(guild_id, limits.time_window_days)
-        
-        within_limit = usage["total_tokens"] < limits.guild_limit
-        
-        return within_limit, {
-            "limit": limits.guild_limit,
-            "usage": usage,
-            "remaining": max(0, limits.guild_limit - usage["total_tokens"]),
-            "timeframe_days": limits.time_window_days
-        }
-    
-    def can_process_request(self, user_id: int, guild_id: Optional[int]) -> Tuple[bool, Dict[str, Any]]:
-        """Check if a request can be processed based on token limits"""
-        user_ok, user_info = self.check_user_limit(user_id)
-        guild_ok, guild_info = self.check_guild_limit(guild_id)
-        
-        can_process = user_ok and guild_ok
-        
-        return can_process, {
-            "user": user_info,
-            "guild": guild_info,
-            "can_process": can_process
+            "user": {
+                "unlimited": False,
+                "limit": user_limit,
+                "usage": usage,
+                "remaining": remaining,
+                "model": model,
+                "timeframe_days": self.default_limits["time_window_days"]
+            }
         }
     
     def get_session_usage(self, session_id: str) -> List[Dict[str, Any]]:

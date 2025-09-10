@@ -4,7 +4,7 @@ from discord.ext import commands
 from discord import app_commands
 from typing import List, Optional
 from model_manager import ModelManager
-from token_manager_v2 import get_token_manager
+from token_manager import get_token_manager
 from util.model_operations import handle_list, handle_current, handle_switch, handle_add
 
 
@@ -260,7 +260,7 @@ class ModelCommands(commands.Cog):
     
     @app_commands.command(name="token-usage", description="🪙 Check your token usage")
     async def token_usage_command(self, interaction: discord.Interaction):
-        """Check token usage for user and guild with new per-model system"""
+        """Check token usage for user with new simplified per-model system"""
         token_manager = get_token_manager()
         user_id = interaction.user.id
         guild_id = interaction.guild.id if interaction.guild else None
@@ -268,24 +268,18 @@ class ModelCommands(commands.Cog):
         # Get current model for context
         current_model = ModelManager.get_current_model_name()
         
-        # Get user roles if in a guild
-        user_roles = None
-        if guild_id and hasattr(interaction.user, 'roles'):
-            user_roles = [role.id for role in interaction.user.roles]
-        
         embed = discord.Embed(
             title="🪙 Token Usage",
             description=f"Current model: **{current_model}**",
             color=discord.Color.blue()
         )
         
-        # Check current model limits
-        can_process, limit_info = token_manager.can_process_request(user_id, guild_id, current_model, 0, user_roles)
+        # Check current model limits and usage
+        can_process, limit_info = token_manager.can_process_request(user_id, guild_id, current_model)
         
         user_info = limit_info.get("user", {})
-        guild_info = limit_info.get("guild", {})
         
-        # User status
+        # User status for current model
         user_status = "✅" if can_process else "❌"
         user_text = f"{user_status} "
         
@@ -304,71 +298,26 @@ class ModelCommands(commands.Cog):
         else:
             user_text += "No usage data available"
         
-        # Add charge source info
-        charge_source = user_info.get("charge_source", "unknown")
-        if charge_source == "guild_pool":
-            user_text += "\n💰 Using server token pool"
-        elif charge_source == "user_pool":
-            user_text += "\n👤 Using personal token pool"
-        elif charge_source == "user_fallback":
-            user_text += "\n🔄 Using personal fallback (server pool exhausted)"
-        elif charge_source == "unlimited":
-            user_text += "\n♾️ Unlimited access"
-        
         embed.add_field(
-            name="👤 Your Usage",
+            name=f"👤 Your Usage ({current_model})",
             value=user_text,
             inline=False
         )
         
-        # Guild info (if applicable)
-        if guild_id and guild_info.get("has_pool"):
-            guild_status = "✅" if not guild_info.get("pool_exhausted") else "❌"
-            guild_text = f"{guild_status} "
-            
-            if "pool_usage" in guild_info:
-                pool_usage = guild_info["pool_usage"]
-                pool_size = guild_info.get("pool_size", 0)
-                guild_text += f"**{pool_usage['total_tokens']:,}** / **{pool_size:,}** pool tokens used"
-                if pool_size > 0:
-                    percentage = (pool_usage['total_tokens'] / pool_size) * 100
-                    guild_text += f" ({percentage:.1f}%)"
-                remaining = guild_info.get("pool_remaining", 0)
-                guild_text += f"\n🔄 **{remaining:,}** pool tokens remaining"
-                guild_text += f"\n👥 **{pool_usage['unique_users']}** users, **{pool_usage['call_count']}** calls"
-            
-            # Member limit info
-            if guild_info.get("member_limit") and "member_usage" in guild_info:
-                member_usage = guild_info["member_usage"]
-                member_limit = guild_info["member_limit"]
-                guild_text += f"\n👤 Your server usage: **{member_usage['total_tokens']:,}** / **{member_limit:,}** tokens"
-            
-            embed.add_field(
-                name="🏠 Server Token Pool",
-                value=guild_text,
-                inline=False
-            )
-        elif guild_id:
-            embed.add_field(
-                name="🏠 Server Status",
-                value="❌ No server token pool configured\nUsing personal token limits",
-                inline=False
-            )
-        
         if not can_process:
             embed.add_field(
                 name="⚠️ Limit Exceeded",
-                value="You cannot use the bot until limits reset or are increased.",
+                value="You cannot use this model until limits reset or are increased.",
                 inline=False
             )
         
-        embed.set_footer(text="Token usage resets monthly • Contact admin for limit increases")
+        embed.set_footer(text="Token usage resets every 30 days • Contact admin for limit increases")
         
         await interaction.response.send_message(embed=embed, ephemeral=True)
     
     @app_commands.command(name="token-stats", description="📊 View overall token statistics (Admin only)")
     async def token_stats_command(self, interaction: discord.Interaction):
-        """View overall token usage statistics with new system features"""
+        """View overall token usage statistics with simplified system"""
         if not await self._admin_check(interaction):
             return
         
@@ -432,26 +381,120 @@ class ModelCommands(commands.Cog):
                 inline=False
             )
         
-        # Charge source breakdown (new feature)
-        if stats['charge_sources']:
-            charge_text = ""
-            for source in stats['charge_sources']:
-                charge_source = source['charge_source']
-                icon = {
-                    'guild_pool': '🏠',
-                    'user_pool': '👤', 
-                    'user_fallback': '🔄',
-                    'unlimited': '♾️',
-                    'user': '👤'  # legacy
-                }.get(charge_source, '❓')
-                charge_text += f"{icon} **{charge_source.replace('_', ' ').title()}**: {source['total_tokens']:,} tokens\n"
-            embed.add_field(
-                name="💰 Token Source Breakdown",
-                value=charge_text,
-                inline=False
+        embed.set_footer(text="Simplified per-user per-model tracking system")
+        
+        await interaction.response.send_message(embed=embed)
+    
+    @app_commands.command(name="token-set-limit", description="🔧 Set token limit for a user on current model (Admin only)")
+    @app_commands.describe(
+        user="User to set limit for",
+        limit="Token limit (-1 for unlimited)"
+    )
+    async def token_set_limit_command(self, interaction: discord.Interaction, user: discord.User, limit: int):
+        """Set token limit for a user on the current model"""
+        if not await self._admin_check(interaction):
+            return
+        
+        token_manager = get_token_manager()
+        current_model = ModelManager.get_current_model_name()
+        
+        token_manager.set_user_limit(user.id, current_model, limit)
+        
+        if limit == -1:
+            embed = discord.Embed(
+                title="✅ Limit Set",
+                description=f"Gave **{user.display_name}** unlimited tokens for model **{current_model}**",
+                color=discord.Color.green()
+            )
+        else:
+            embed = discord.Embed(
+                title="✅ Limit Set",
+                description=f"Set **{user.display_name}**'s limit to **{limit:,}** tokens for model **{current_model}**",
+                color=discord.Color.green()
             )
         
-        embed.set_footer(text="Statistics include new guild pool and per-model tracking")
+        await interaction.response.send_message(embed=embed)
+    
+    @app_commands.command(name="token-set-limit-all", description="🔧 Set token limit for all server members on current model (Admin only)")
+    @app_commands.describe(
+        limit="Token limit (-1 for unlimited)"
+    )
+    async def token_set_limit_all_command(self, interaction: discord.Interaction, limit: int):
+        """Set token limit for all members in the current server for the current model"""
+        if not await self._admin_check(interaction):
+            return
+        
+        if not interaction.guild:
+            embed = discord.Embed(
+                title="❌ Error",
+                description="This command can only be used in a server.",
+                color=discord.Color.red()
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            return
+        
+        token_manager = get_token_manager()
+        current_model = ModelManager.get_current_model_name()
+        
+        # Set limit for all members in the guild
+        member_count = 0
+        for member in interaction.guild.members:
+            if not member.bot:  # Skip bots
+                token_manager.set_user_limit(member.id, current_model, limit)
+                member_count += 1
+        
+        if limit == -1:
+            embed = discord.Embed(
+                title="✅ Limits Set",
+                description=f"Gave **{member_count}** server members unlimited tokens for model **{current_model}**",
+                color=discord.Color.green()
+            )
+        else:
+            embed = discord.Embed(
+                title="✅ Limits Set", 
+                description=f"Set limit to **{limit:,}** tokens for **{member_count}** server members on model **{current_model}**",
+                color=discord.Color.green()
+            )
+        
+        await interaction.response.send_message(embed=embed)
+    
+    @app_commands.command(name="token-reset-usage", description="🔄 Reset all token usage for a user (Admin only)")
+    @app_commands.describe(
+        user="User to reset usage for"
+    )
+    async def token_reset_usage_command(self, interaction: discord.Interaction, user: discord.User):
+        """Reset all token usage for a user"""
+        if not await self._admin_check(interaction):
+            return
+        
+        token_manager = get_token_manager()
+        token_manager.reset_user_usage(user.id)
+        
+        embed = discord.Embed(
+            title="✅ Usage Reset",
+            description=f"Reset all token usage for **{user.display_name}**",
+            color=discord.Color.green()
+        )
+        
+        await interaction.response.send_message(embed=embed)
+    
+    @app_commands.command(name="token-set-unlimited", description="♾️ Give a user unlimited tokens on all models (Admin only)")
+    @app_commands.describe(
+        user="User to give unlimited access to"
+    )
+    async def token_set_unlimited_command(self, interaction: discord.Interaction, user: discord.User):
+        """Give a user unlimited tokens on all models"""
+        if not await self._admin_check(interaction):
+            return
+        
+        token_manager = get_token_manager()
+        token_manager.set_user_limit_all_models(user.id, -1)
+        
+        embed = discord.Embed(
+            title="✅ Unlimited Access Granted",
+            description=f"Gave **{user.display_name}** unlimited tokens on all models",
+            color=discord.Color.green()
+        )
         
         await interaction.response.send_message(embed=embed)
 

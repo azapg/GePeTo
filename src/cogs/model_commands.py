@@ -284,9 +284,7 @@ class ModelCommands(commands.Cog):
 
         if user_info.get("unlimited"):
             user_text += "**Unlimited access**"
-            print('asd')
         elif "usage" in user_info:
-            print('hi')
             usage = user_info["usage"]
             limit = user_info.get("limit", 0)
             user_text += f"**{usage['total_tokens']:,}** / **{limit:,}** tokens used"
@@ -296,10 +294,8 @@ class ModelCommands(commands.Cog):
             remaining = user_info.get("remaining", 0)
             user_text += f"\n🔄 **{remaining:,}** tokens remaining"
             user_text += f"\n📊 **{usage['call_count']}** calls in last {usage['timeframe_days']} days"
-            print('aaa')
         else:
             user_text += "No usage data available"
-        print('hi1')
 
         embed.add_field(
             name=f"👤 Your Usage ({current_model})",
@@ -315,7 +311,6 @@ class ModelCommands(commands.Cog):
             )
 
         embed.set_footer(text="Token usage resets every 30 days • Contact admin for limit increases")
-        print('?')
         await interaction.response.send_message(embed=embed, ephemeral=True)
     
     @app_commands.command(name="token-stats", description="📊 View overall token statistics (Admin only)")

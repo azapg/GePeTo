@@ -274,7 +274,7 @@ class ModelCommands(commands.Cog):
         )
 
         # Check current model limits and usage
-        can_process, limit_info = token_manager.can_process_request(user_id, guild_id, current_model)
+        can_process, limit_info = token_manager.can_process_request(user_id, current_model)
 
         user_info = limit_info.get("user", {})
 

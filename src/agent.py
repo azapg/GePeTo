@@ -17,7 +17,6 @@ load_dotenv()
 ENABLE_DATA_LOG = os.getenv('DATA_LOG_MESSAGES', 'false').strip().lower() in ('1', 'true', 'yes', 'y', 'on')
 async def act(messages, message):
     start_time = time.time()
-    
     # Get token manager and check limits before processing
     token_manager = get_token_manager()
     user_id = message.author.id
@@ -26,7 +25,7 @@ async def act(messages, message):
     
     # Get current model name for limit checking
     current_model = ModelManager.get_current_model_name()
-    
+
     # Check if user can process request for this specific model
     can_process, limit_info = token_manager.can_process_request(user_id, current_model)
     
@@ -84,7 +83,8 @@ async def act(messages, message):
                 user_id=user_id,
                 guild_id=guild_id,
                 channel_id=channel_id,
-                session_id=session_id
+                session_id=session_id,
+                model=current_model,
             )
             
             # Record token usage

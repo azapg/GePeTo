@@ -101,6 +101,7 @@ class ModelManager:
 
     @classmethod
     def get_current_model_name(cls):
+        cls._load_configurations()
         return cls._current_model
 
     @classmethod

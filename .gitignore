@@ -21,3 +21,5 @@ prompt.json
 
 # Test files
 test_*.py
+
+.idea/

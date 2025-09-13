@@ -1,8 +1,10 @@
 import os
+from typing import List
+
 import discord
-from discord.ext import commands
 from discord import app_commands
-from typing import List, Optional
+from discord.ext import commands
+
 from model_manager import ModelManager
 from util.model_operations import handle_list, handle_current, handle_switch, handle_add
 

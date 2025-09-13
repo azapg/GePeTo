@@ -1,5 +1,4 @@
 from typing import Dict, Callable
-import tools
 
 TOOLS: Dict[str, Callable] = {}
 

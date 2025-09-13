@@ -3,9 +3,7 @@ Memory validation utilities for GePeTo bot startup.
 Provides cross-platform memory checking to prevent silent failures.
 """
 import os
-import sys
-import warnings
-from typing import Tuple, Optional
+from typing import Tuple
 
 
 def get_system_memory_info() -> Tuple[int, int]:

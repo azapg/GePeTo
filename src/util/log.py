@@ -6,7 +6,7 @@ def _snapshot_text(text: str, limit: int) -> str:
     text = text.replace("\n", " ").strip()
     return text if len(text) <= limit else text[:limit] + "..."
 
-def _format_message_context(msg: discord.Message, verbosity: int) -> str:
+def format_message_context(msg: discord.Message, verbosity: int) -> str:
     try:
         author = f"{msg.author}" + (f" ({msg.author.id})" if verbosity >= 3 else "")
         if msg.guild:

@@ -71,7 +71,7 @@ def estimate_recommended_memory() -> int:
         Recommended memory in MB
     """
     # For smooth operation with larger models and multiple concurrent operations
-    return 2048  # 2 GB recommended
+    return 512  # 512 MB recommended
 
 
 def validate_memory_requirements(show_warnings: bool = True) -> bool:

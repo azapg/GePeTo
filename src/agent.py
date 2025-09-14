@@ -17,7 +17,7 @@ from data_collector import collect_interaction_data
 from model_manager import ModelManager
 from tools.tools_manager import TOOLS
 
-mlflow.dspy.autolog()
+mlflow.dspy.autolog() # pyright: ignore[reportPrivateImportUsage]
 mlflow.set_experiment("GePeTo")
 
 load_dotenv()

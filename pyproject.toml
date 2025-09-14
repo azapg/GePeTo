@@ -10,4 +10,5 @@ dependencies = [
     "dspy>=2.6.27",
     "linkup-sdk>=0.2.8",
     "mlflow>=2.22.1",
+    "psutil>=7.0.0",
 ]

@@ -1,25 +1,24 @@
 import asyncio
 import os
+import sys
+
+from util.memory_check import validate_memory_requirements
 
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
 
-# Import heavy modules with memory awareness
-# check_memory_before_import("agent")
+load_dotenv()
+
 from agent import act
 from bot_instance import set_bot
-# check_memory_before_import("scrapper")
 from scrapper import extract_minimal_message_data
 
-# Check memory before importing heavy modules
-# from util.memory_check import validate_memory_requirements, check_memory_before_import
-# Validate memory requirements early
-# if not validate_memory_requirements():
-#    print("Exiting due to insufficient memory.")
-#    sys.exit(1)
-
-load_dotenv()
+MEMORY_EXIT_FLAG = os.getenv('MEMORY_REQUIREMENTS_EXIT', 'true').strip().lower() in ('1', 'true', 'yes', 'y', 'on')
+if not validate_memory_requirements() and MEMORY_EXIT_FLAG:
+    print("Exiting due to insufficient memory.")
+    print("Set MEMORY_REQUIREMENTS_EXIT=false to override this behavior.")
+    sys.exit(1)
 
 from util.verbosity import LOG_VERBOSITY
 from util.log import format_message_context

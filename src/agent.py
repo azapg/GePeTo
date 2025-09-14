@@ -1,7 +1,15 @@
 import os
 import time
+
+from util.memory_check import check_memory_before_import
+
+check_memory_before_import("dspy")
 import dspy
+
+check_memory_before_import("mlflow")
 import mlflow
+
+check_memory_before_import("discord")
 import discord
 from dotenv import load_dotenv
 from model import ChatContext, ChatAction
@@ -14,6 +22,8 @@ mlflow.set_experiment("GePeTo")
 
 load_dotenv()
 ENABLE_DATA_LOG = os.getenv('DATA_LOG_MESSAGES', 'false').strip().lower() in ('1', 'true', 'yes', 'y', 'on')
+
+
 async def act(messages, message):
     start_time = time.time()
 

@@ -1,5 +1,5 @@
 import functools
-from typing import Dict, Callable, Optional, Any, List
+from typing import Dict, Callable, Optional, List
 
 import discord
 

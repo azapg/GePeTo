@@ -15,7 +15,7 @@ class ConfirmView(discord.ui.View):
         return True
 
     @discord.ui.button(label='Confirm', style=discord.ButtonStyle.green)
-    async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def confirm(self, interaction: discord.Interaction, _):
         # TODO: Could we create a button for cancelling the action?
         await interaction.response.send_message(f'You confirmed the following action:\n ```{self.action}```',
                                                 ephemeral=True)
@@ -23,7 +23,7 @@ class ConfirmView(discord.ui.View):
         self.stop()
 
     @discord.ui.button(label='Cancel', style=discord.ButtonStyle.grey)
-    async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def cancel(self, interaction: discord.Interaction, _):
         await interaction.response.send_message(f'This action following action was cancelled:\n ```{self.action}```',
                                                 ephemeral=True)
         self.value = False

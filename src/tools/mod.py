@@ -1,4 +1,4 @@
-from util.discord import get_bot, get_guild
+from util.discord import get_guild
 from .tools_manager import tool
 
 

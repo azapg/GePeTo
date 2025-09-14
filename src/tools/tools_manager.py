@@ -2,7 +2,6 @@ import functools
 from typing import Dict, Callable, Optional, Any, List
 
 import discord
-import tools
 
 TOOLS: Dict[str, Callable] = {}
 

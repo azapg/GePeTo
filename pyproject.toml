@@ -1,7 +1,7 @@
 [project]
-name = "dspy-test"
+name = "GePeTo"
 version = "0.1.0"
-description = "Add your description here"
+description = "The most capable Discord bot"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -10,4 +10,5 @@ dependencies = [
     "dspy>=2.6.27",
     "linkup-sdk>=0.2.8",
     "mlflow>=2.22.1",
+    "psutil>=7.0.0",
 ]

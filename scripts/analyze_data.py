@@ -6,16 +6,15 @@ This script analyzes the collected interaction data to provide insights
 for training and optimization.
 """
 
-import sys
 import os
+import sys
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.data_collector import get_data_collector
 import json
 from collections import Counter, defaultdict
 from datetime import datetime
-import matplotlib.pyplot as plt
-import pandas as pd
 from typing import Dict, List, Any
 
 def analyze_tool_usage(training_data: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -54,7 +53,6 @@ def analyze_tool_usage(training_data: List[Dict[str, Any]]) -> Dict[str, Any]:
 def analyze_chat_patterns(training_data: List[Dict[str, Any]]) -> Dict[str, Any]:
     """Analyze chat interaction patterns"""
     chat_types = Counter()
-    user_interactions = Counter()
     message_lengths = []
     response_times = []
     

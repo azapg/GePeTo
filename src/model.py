@@ -1,4 +1,4 @@
-from typing import List, Any
+from typing import List, Any, Optional
 import dspy
 import pydantic
 from util.prompt_config import get_chataction_prompt
@@ -21,6 +21,7 @@ class ChatContext(pydantic.BaseModel):
     chat_id: int
     chat_name: str
     chat_type: str
+    guild_id: Optional[int] = None
 
 class ChatAction(dspy.Signature):
     __doc__ = get_chataction_prompt()

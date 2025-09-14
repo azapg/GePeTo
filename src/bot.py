@@ -39,6 +39,9 @@ async def main():
         await bot.load_extension('cogs.model_commands')
         if LOG_VERBOSITY >= 2:
             print('Model commands cog loaded successfully')
+        await bot.load_extension('cogs.token_management_commands')
+        if LOG_VERBOSITY >= 2:
+            print('Token management commands cog loaded successfully')
     except Exception as e:
         print(f'Failed to load model commands cog: {e}')
 

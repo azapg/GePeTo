@@ -60,14 +60,7 @@ def estimate_minimum_memory_requirement() -> int:
     Returns:
         Estimated minimum memory requirement in MB
     """
-    # Conservative estimate based on dependencies:
-    # - Python interpreter: ~20-50 MB
-    # - Discord.py: ~50-100 MB
-    # - DSPy (ML framework): ~200-500 MB
-    # - MLflow: ~50-100 MB
-    # - Model inference: ~100-1000 MB (depending on model)
-    # - OS overhead and buffers: ~200 MB
-    return 512  # 512 MB minimum, which is quite conservative
+    return 128  # 128 MB minimum
 
 
 def estimate_recommended_memory() -> int:
